@@ -4,7 +4,7 @@ import '../styles/Login.css';
 
 const Login = ({ onLoginSuccess }) => {
   // Estados para el flujo de autenticación
-  const [credentials, setCredentials] = useState(false);
+  const [credentials, setCredentials] = useState({ usuario: '', password: '' });
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -25,7 +25,7 @@ const Login = ({ onLoginSuccess }) => {
       localStorage.removeItem('token');
       localStorage.removeItem('usuario');
     }
-  }, [onLoginSuccess]); // ← Agregar onLoginSuccess como dependencia
+  }, [onLoginSuccess]);
 
   // ✅ CORREGIDO: useEffect con dependencias correctas
   useEffect(() => {
@@ -33,7 +33,7 @@ const Login = ({ onLoginSuccess }) => {
     if (token) {
       checkAuth();
     }
-  }, [checkAuth]); // ← Ahora checkAuth es una dependencia estable
+  }, [checkAuth]);
 
   // Timer para reenvío de código
   useEffect(() => {
@@ -80,31 +80,57 @@ const Login = ({ onLoginSuccess }) => {
       console.log('🔐 Verificando credenciales...');
       const data = await apiClient.login(credentials);
 
-      if (!data.success) {
-        throw new Error(data.message || 'Credenciales inválidas');
+      // ✅ ADAPTADO: El backend de Vercel puede tener estructura diferente
+      if (!data.success && !data.token) {
+        throw new Error(data.message || data.error || 'Credenciales inválidas');
       }
 
-      if (!data.usuario) {
-        throw new Error('Datos de usuario incompletos');
+      console.log('✅ Credenciales válidas, procediendo...');
+      
+      // ✅ ADAPTADO: Manejar diferentes estructuras de respuesta
+      let usuarioId;
+      let usuarioInfo;
+
+      if (data.usuario) {
+        // Estructura: { success: true, usuario: { id, ... } }
+        usuarioId = data.usuario.id || data.usuario._id;
+        usuarioInfo = data.usuario;
+      } else if (data.user) {
+        // Estructura: { success: true, user: { id, ... } }
+        usuarioId = data.user.id || data.user._id;
+        usuarioInfo = data.user;
+      } else if (data.data) {
+        // Estructura: { success: true, data: { usuario: { id, ... } } }
+        usuarioId = data.data.usuario?.id || data.data.usuario?._id;
+        usuarioInfo = data.data.usuario;
+      } else {
+        // Estructura simple: { success: true, id, ... }
+        usuarioId = data.id || data._id;
+        usuarioInfo = data;
       }
 
-      console.log('✅ Credenciales válidas, solicitando 2FA...');
-      
-      // IMPORTANTE: El backend retorna usuario.id (no usuario._id)
-      const usuarioId = data.usuario.id || data.usuario._id;
-      
       if (!usuarioId) {
         throw new Error('ID de usuario no encontrado en la respuesta');
       }
 
-      // Guardar datos del usuario temporalmente (sin token aún)
+      // Guardar datos del usuario temporalmente
       setUsuarioData({
-        ...data.usuario,
-        id: usuarioId // Asegurar que tenemos el ID correcto
+        ...usuarioInfo,
+        id: usuarioId
       });
 
-      // Proceder con 2FA
-      await solicitarCodigo2FA(usuarioId);
+      // ✅ ADAPTADO: Verificar si necesita 2FA o puede acceder directamente
+      if (data.token && !data.requires2FA) {
+        // Acceso directo sin 2FA
+        console.log('✅ Acceso directo concedido');
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('usuario', JSON.stringify(usuarioInfo));
+        onLoginSuccess();
+      } else {
+        // Proceder con 2FA
+        console.log('📱 Iniciando flujo 2FA...');
+        await solicitarCodigo2FA(usuarioId);
+      }
 
     } catch (err) {
       console.error('❌ Error en login:', err);
@@ -122,8 +148,9 @@ const Login = ({ onLoginSuccess }) => {
       
       const data = await apiClient.solicitarCodigo2FA(usuarioId);
 
-      if (!data.success) {
-        throw new Error(data.message || 'Error al solicitar código de verificación');
+      // ✅ ADAPTADO: Manejar diferentes estructuras de respuesta
+      if (!data.success && !data.message) {
+        throw new Error(data.error || 'Error al solicitar código de verificación');
       }
 
       console.log('✅ Código 2FA enviado');
@@ -163,8 +190,9 @@ const Login = ({ onLoginSuccess }) => {
 
       const data = await apiClient.verificarCodigo2FA(usuarioId, codigo2FA);
 
-      if (!data.success) {
-        throw new Error(data.message || 'Código de verificación inválido');
+      // ✅ ADAPTADO: Manejar diferentes estructuras de respuesta
+      if (!data.success && !data.token) {
+        throw new Error(data.message || data.error || 'Código de verificación inválido');
       }
 
       if (!data.token) {
@@ -176,8 +204,8 @@ const Login = ({ onLoginSuccess }) => {
       // Guardar en localStorage (solo después de verificar 2FA)
       localStorage.setItem('token', data.token);
       
-      // Usar los datos del usuario de la respuesta (más completos después del 2FA)
-      const usuarioCompleto = data.usuario || usuarioData;
+      // ✅ ADAPTADO: Obtener datos del usuario de la respuesta
+      const usuarioCompleto = data.usuario || data.user || data.data?.usuario || usuarioData;
       localStorage.setItem('usuario', JSON.stringify(usuarioCompleto));
 
       onLoginSuccess();
@@ -220,28 +248,55 @@ const Login = ({ onLoginSuccess }) => {
     setUsuarioData(null);
   };
 
-  // Manejo centralizado de errores
+  // ✅ ACTUALIZADO: Manejo de errores para el backend de Vercel
   const manejarError = (err) => {
     let errorMessage = 'Error de conexión. Intenta nuevamente.';
 
-    if (err.message && err.message.includes('Failed to fetch')) {
-      errorMessage = 'No se pudo conectar con el servidor. Verifica que el backend esté corriendo en http://localhost:4000';
-    } else if (err.message && err.message.includes('NetworkError')) {
-      errorMessage = 'Error de red. Verifica tu conexión a internet y que el servidor esté disponible.';
-    } else if (err.message && err.message.includes('CORS')) {
-      errorMessage = 'Error de configuración del servidor (CORS).';
-    } else if (err.status === 500) {
-      errorMessage = 'Error interno del servidor. Intenta más tarde.';
-    } else if (err.status === 401 || err.status === 403) {
-      errorMessage = 'Credenciales inválidas. Verifica tu usuario y contraseña.';
-    } else if (err.status === 404) {
-      errorMessage = 'Servicio no encontrado. Verifica que el backend esté corriendo.';
-    } else if (err.status === 429) {
-      errorMessage = err.message || 'Demasiadas solicitudes. Espera unos minutos.';
-    } else if (err.message && !err.message.includes('<!DOCTYPE') && !err.message.includes('<html')) {
+    // Manejar errores de red
+    if (err.message && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError'))) {
+      errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
+    } 
+    // Manejar errores CORS
+    else if (err.message && err.message.includes('CORS')) {
+      errorMessage = 'Error de configuración del servidor. Contacta al administrador.';
+    }
+    // Manejar errores HTTP específicos
+    else if (err.status) {
+      switch (err.status) {
+        case 401:
+          errorMessage = 'Credenciales inválidas. Verifica tu usuario y contraseña.';
+          break;
+        case 403:
+          errorMessage = 'Acceso denegado. No tienes permisos para acceder.';
+          break;
+        case 404:
+          errorMessage = 'Servicio no encontrado. Verifica la configuración del backend.';
+          break;
+        case 429:
+          errorMessage = 'Demasiadas solicitudes. Espera unos minutos antes de intentar nuevamente.';
+          break;
+        case 500:
+          errorMessage = 'Error interno del servidor. Intenta más tarde.';
+          break;
+        case 502:
+        case 503:
+        case 504:
+          errorMessage = 'El servidor no está disponible temporalmente. Intenta más tarde.';
+          break;
+        default:
+          errorMessage = `Error del servidor (${err.status}). Intenta nuevamente.`;
+      }
+    }
+    // Manejar mensajes de error del backend
+    else if (err.message && !err.message.includes('<!DOCTYPE') && !err.message.includes('<html')) {
       errorMessage = err.message;
     }
+    // Manejar errores de timeout
+    else if (err.name === 'TimeoutError' || err.code === 'ECONNABORTED') {
+      errorMessage = 'La solicitud tardó demasiado tiempo. Verifica tu conexión e intenta nuevamente.';
+    }
 
+    console.error('🔴 Error detallado:', err);
     setError(errorMessage);
   };
 
@@ -403,6 +458,21 @@ const Login = ({ onLoginSuccess }) => {
         {error && (
           <div className="error-message">
             ⚠️ {error}
+          </div>
+        )}
+
+        {/* Información de debug para desarrollo */}
+        {process.env.NODE_ENV === 'development' && (
+          <div style={{ 
+            marginTop: '1rem', 
+            padding: '0.5rem', 
+            background: '#f5f5f5', 
+            borderRadius: '4px', 
+            fontSize: '0.75rem',
+            color: '#666',
+            textAlign: 'center'
+          }}>
+            Backend: {import.meta.env.VITE_API_URL || 'No configurado'}
           </div>
         )}
       </div>
