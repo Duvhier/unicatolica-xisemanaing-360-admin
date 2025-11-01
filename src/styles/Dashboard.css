@@ -1,0 +1,424 @@
+/* ESTILOS COPIADOS DE TU CÓDIGO REACT - DASHBOARD MEJORADO */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #f8fafc;
+  color: #2d3748;
+  line-height: 1.6;
+}
+
+/* Contenedor principal */
+.dashboard-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Header estilo similar a tu cronograma */
+.dashboard-header {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid #e2e8f0;
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.dashboard-header h1 {
+  color: #1a202c;
+  font-size: 28px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.user-details {
+  text-align: right;
+}
+
+.user-details .welcome {
+  color: #718096;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.user-details .name {
+  color: #2d3748;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+/* Botones con estilo de tu código */
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  border-bottom: 3px solid transparent;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-bottom-color: #5a67d8;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+  background: #f7fafc;
+  color: #4a5568;
+  border: 1px solid #e2e8f0;
+  border-bottom-color: #cbd5e0;
+}
+
+.btn-secondary:hover {
+  background: #edf2f7;
+  border-color: #cbd5e0;
+}
+
+.btn-danger {
+  background: #e53e3e;
+  color: white;
+  border-bottom-color: #c53030;
+}
+
+.btn-danger:hover {
+  background: #c53030;
+  transform: translateY(-1px);
+}
+
+.btn-success {
+  background: #38a169;
+  color: white;
+  border-bottom-color: #2f855a;
+}
+
+.btn-success:hover {
+  background: #2f855a;
+  transform: translateY(-1px);
+}
+
+/* Selector de eventos con borde izquierdo */
+.event-selector {
+  background: #f7fafc;
+  padding: 20px;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+}
+
+.event-selector label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 16px;
+}
+
+.event-selector select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 16px;
+  background: white;
+  transition: all 0.2s ease;
+  color: #2d3748;
+}
+
+.event-selector select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Layout principal */
+.dashboard-main {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 24px;
+  align-items: start;
+}
+
+/* Tarjetas con estilo de tu cronograma */
+.inscripciones-container,
+.stats-container {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid #e2e8f0;
+}
+
+.section-title {
+  color: #2d3748;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.section-title::before {
+  content: '';
+  width: 4px;
+  height: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 2px;
+}
+
+/* Tabla con estilo limpio */
+.table-container {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 800px;
+}
+
+th {
+  background: #f8fafc;
+  padding: 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #4a5568;
+  border-bottom: 2px solid #e2e8f0;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+td {
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #2d3748;
+  font-size: 14px;
+}
+
+tr:hover {
+  background: #f7fafc;
+}
+
+/* Estadísticas con tarjetas */
+.stats-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.stat-card {
+  background: #f8fafc;
+  padding: 20px;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+  transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.stat-card.success {
+  border-left-color: #38a169;
+}
+
+.stat-card.warning {
+  border-left-color: #ed8936;
+}
+
+.stat-card.danger {
+  border-left-color: #e53e3e;
+}
+
+.stat-number {
+  font-size: 28px;
+  font-weight: 700;
+  color: #2d3748;
+  display: block;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #718096;
+  margin-top: 8px;
+  font-weight: 500;
+}
+
+/* Badges idénticos a tu código */
+.badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.badge-success {
+  background: #c6f6d5;
+  color: #276749;
+}
+
+.badge-danger {
+  background: #fed7d7;
+  color: #c53030;
+}
+
+/* Loading states */
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #718096;
+}
+
+.loading-spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #667eea;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: #718096;
+}
+
+.empty-state .icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.error-message {
+  background: #fed7d7;
+  border: 1px solid #feb2b2;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #c53030;
+}
+
+/* Botones pequeños */
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+/* Colores de tu código (uniblue, unigold) */
+:root {
+  --uniblue: #667eea;
+  --unigold: #d69e2e;
+}
+
+/* Estados hover y focus de tu código */
+.hover\\:shadow-md:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.transition-all {
+  transition: all 0.2s ease;
+}
+
+/* Responsive igual a tu código */
+@media (max-width: 1200px) {
+  .dashboard-main {
+    grid-template-columns: 1fr;
+  }
+  
+  .stats-container {
+    order: -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 16px;
+  }
+  
+  .header-top {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+  
+  .user-info {
+    justify-content: center;
+    text-align: center;
+  }
+  
+  .user-details {
+    text-align: center;
+  }
+  
+  .dashboard-header,
+  .inscripciones-container,
+  .stats-container {
+    padding: 20px;
+  }
+  
+  th, td {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .user-info {
+    flex-direction: column;
+    width: 100%;
+  }
+}
+

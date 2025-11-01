@@ -1,0 +1,307 @@
+/* Estilos para el componente Scanner */
+.admin-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Header idéntico a tu dashboard */
+.admin-header {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid #e2e8f0;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.admin-header h1 {
+  color: #1a202c;
+  font-size: 28px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.user-info span {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 16px;
+}
+
+/* Layout principal */
+.scanner-main {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 24px;
+  align-items: start;
+}
+
+/* Scanner container */
+.scanner-container {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.scanner-title {
+  color: #2d3748;
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.qr-reader {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto 25px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid #e2e8f0;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+}
+
+.scanner-controls {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Información del usuario */
+.user-info-container {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid #e2e8f0;
+  height: fit-content;
+}
+
+.user-info-container h3 {
+  color: #2d3748;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-details {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.user-detail {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.user-detail:last-child {
+  margin-bottom: 0;
+  border-bottom: none;
+}
+
+.user-detail strong {
+  color: #4a5568;
+  display: block;
+  font-size: 14px;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.user-detail span {
+  color: #2d3748;
+  font-weight: 600;
+}
+
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Resultados del scan - estilo de badges */
+.scan-result {
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.scan-result.success {
+  background: #c6f6d5;
+  color: #276749;
+  border: 1px solid #9ae6b4;
+}
+
+.scan-result.error {
+  background: #fed7d7;
+  color: #c53030;
+  border: 1px solid #feb2b2;
+}
+
+.scan-result.info {
+  background: #bee3f8;
+  color: #2c5aa0;
+  border: 1px solid #90cdf4;
+}
+
+/* Estados de cámara */
+.camera-status {
+  margin: 16px 0;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.camera-status.active {
+  background: #c6f6d5;
+  color: #276749;
+  border: 1px solid #9ae6b4;
+}
+
+.camera-status.inactive {
+  background: #fed7d7;
+  color: #c53030;
+  border: 1px solid #feb2b2;
+}
+
+.camera-status.starting {
+  background: #fffaf0;
+  color: #dd6b20;
+  border: 1px solid #fbd38d;
+}
+
+.camera-status.scanned {
+  background: #e6fffa;
+  color: #234e52;
+  border: 1px solid #81e6d9;
+}
+
+.camera-status.error {
+  background: #fed7d7;
+  color: #c53030;
+  border: 1px solid #feb2b2;
+}
+
+/* Badges idénticos a tu código */
+.badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.badge-success {
+  background: #c6f6d5;
+  color: #276749;
+}
+
+.badge-danger {
+  background: #fed7d7;
+  color: #c53030;
+}
+
+/* Loading spinner */
+.loading-spinner {
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .scanner-main {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-container {
+    padding: 16px;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .scanner-controls {
+    flex-direction: column;
+  }
+  
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .admin-header,
+  .scanner-container,
+  .user-info-container {
+    padding: 20px;
+  }
+  
+  .qr-reader {
+    min-height: 250px;
+  }
+}
+
+@media (max-width: 480px) {
+  .user-info {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .user-info > * {
+    width: 100%;
+  }
+}
+
