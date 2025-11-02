@@ -1,15 +1,13 @@
-// api.js - VERSIÓN ACTUALIZADA PARA VERCEL
-// Usar variable de entorno VITE_API_URL para mayor flexibilidad
+// api.js - VERSIÓN CORREGIDA
+// Usar URL relativa en desarrollo (para usar el proxy) o URL completa en producción
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 
-  (process.env.NODE_ENV === 'production' 
-    ? 'https://unicatolica-xisemanaing-360-backend.vercel.app'
-    : 'http://localhost:4000');
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://unicatolica-xisemanaing-360-backend.vercel.app'
+  : 'http://localhost:4000'; // URL directa al backend en desarrollo
 
 class APIClient {
   constructor() {
     this.baseURL = API_BASE_URL;
-    console.log('🚀 API Client inicializado con URL:', this.baseURL);
   }
 
   async request(endpoint, options = {}) {
@@ -25,8 +23,6 @@ class APIClient {
     }
 
     const url = `${this.baseURL}${endpoint}`;
-    
-    console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`, options.body ? JSON.parse(options.body) : '');
     
     try {
       const response = await fetch(url, {
@@ -47,25 +43,19 @@ class APIClient {
           const errorMatch = text.match(/<pre>(.*?)<\/pre>/i) || text.match(/<title>(.*?)<\/title>/i);
           const errorText = errorMatch ? errorMatch[1] : 'Error del servidor';
           data = { 
-            success: false,
             message: response.status === 500 
               ? `Error interno del servidor (${errorText}). Por favor, contacta al administrador.` 
               : `Error ${response.status}: ${errorText}`
           };
         } else {
-          data = { 
-            success: false,
-            message: text || `Error ${response.status}: ${response.statusText}` 
-          };
+          data = { message: text || `Error ${response.status}` };
         }
       }
-
-      console.log(`✅ API Response (${response.status}):`, data);
 
       if (!response.ok) {
         // Para errores del servidor, lanzar error con mensaje más claro
         const errorMessage = data.message || data.error || `Error ${response.status}: ${response.statusText}`;
-        const error = new Error(errorMessage);
+        const error = new Error(`Error ${response.status}: ${errorMessage}`);
         error.status = response.status;
         error.data = data;
         throw error;
@@ -75,23 +65,11 @@ class APIClient {
 
     } catch (error) {
       console.error('❌ API Error:', error);
-      
       // Mejorar mensaje de error para problemas de conexión
       if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-        const connectionError = new Error(`No se pudo conectar con el servidor: ${this.baseURL}. Verifica tu conexión a internet y que el backend esté disponible.`);
-        connectionError.status = 0;
-        throw connectionError;
+        throw new Error('No se pudo conectar con el servidor. Verifica que el backend esté corriendo en http://localhost:4000');
       }
-      
-      // Si el error ya tiene un mensaje claro, mantenerlo
-      if (error.message && !error.message.includes('Error del servidor')) {
-        throw error;
-      }
-      
-      // Error genérico
-      const genericError = new Error('Error de conexión con el servidor. Por favor, intenta nuevamente.');
-      genericError.status = error.status || 500;
-      throw genericError;
+      throw error;
     }
   }
 
@@ -104,7 +82,7 @@ class APIClient {
    * @param {string} credentials.password - Contraseña
    */
   async login(credentials) {
-    return this.request('/api/auth/login', {
+    return this.request('/organizador/login', {
       method: 'POST',
       body: JSON.stringify(credentials)
     });
@@ -115,7 +93,7 @@ class APIClient {
    * @param {string} usuarioId - ID del usuario autenticado
    */
   async solicitarCodigo2FA(usuarioId) {
-    return this.request('/api/auth/2fa/solicitar', {
+    return this.request('/organizador/2fa/solicitar', {
       method: 'POST',
       body: JSON.stringify({ usuarioId })
     });
@@ -127,9 +105,31 @@ class APIClient {
    * @param {string} codigo - Código de 6 dígitos recibido por WhatsApp
    */
   async verificarCodigo2FA(usuarioId, codigo) {
-    return this.request('/api/auth/2fa/verificar', {
+    return this.request('/organizador/2fa/verificar', {
       method: 'POST',
       body: JSON.stringify({ usuarioId, codigo })
+    });
+  }
+
+  /**
+   * Método para renovar token expirado
+   * @param {string} refreshToken - Token de refresco
+   */
+  async renovarToken(refreshToken) {
+    return this.request('/organizador/refresh-token', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken })
+    });
+  }
+
+  /**
+   * Cerrar sesión y revocar tokens
+   * @param {string} usuarioId - ID del usuario
+   */
+  async logout(usuarioId) {
+    return this.request('/organizador/logout', {
+      method: 'POST',
+      body: JSON.stringify({ usuarioId })
     });
   }
 
@@ -137,24 +137,17 @@ class APIClient {
    * Verificar estado de la sesión
    */
   async verificarSesion() {
-    return this.request('/api/auth/verificar-sesion');
+    return this.request('/organizador/verificar-sesion');
   }
 
-  // ===== MÉTODOS DE DATOS DEL DASHBOARD =====
-
-  /**
-   * Obtener todas las actividades disponibles
-   */
-  async getActividades() {
-    return this.request('/api/actividades');
-  }
+  // ===== MÉTODOS EXISTENTES DEL DASHBOARD =====
 
   /**
    * Obtener inscripciones por colección (evento)
    * @param {string} coleccion - ID de la colección/evento
    */
   async getInscripciones(coleccion) {
-    return this.request(`/api/inscripciones/${coleccion}`);
+    return this.request(`/organizador/inscripciones?coleccion=${coleccion}`);
   }
 
   /**
@@ -162,7 +155,14 @@ class APIClient {
    * @param {string} coleccion - ID de la colección/evento
    */
   async getStats(coleccion) {
-    return this.request(`/api/stats/${coleccion}`);
+    return this.request(`/organizador/stats?coleccion=${coleccion}`);
+  }
+
+  /**
+   * Obtener todas las actividades disponibles
+   */
+  async getActividades() {
+    return this.request('/api/actividades/todas');
   }
 
   /**
@@ -172,58 +172,72 @@ class APIClient {
    * @param {boolean} asistencia - Estado de la asistencia
    */
   async marcarAsistencia(id, coleccion, asistencia) {
-    return this.request(`/api/asistencia/${coleccion}/${id}`, {
+    return this.request(`/organizador/asistencia/${id}?coleccion=${coleccion}`, {
       method: 'PUT',
       body: JSON.stringify({ asistencia })
     });
   }
-
-  // ===== MÉTODOS PARA ESTADO DE REGISTROS =====
-
-  /**
-   * Obtener estado de registros para liderazgo
-   */
-  async getEstadoLiderazgo() {
-    return this.request('/liderazgo/estado-registros');
-  }
-
-  /**
-   * Obtener estado de registros para inaugural
-   */
-  async getEstadoInaugural() {
-    return this.request('/asistenciainaugural/estado-registros');
-  }
-
-  /**
-   * Obtener estado de registros para hackathon
-   */
-  async getEstadoHackathon() {
-    return this.request('/inscripciones/estado-registros');
-  }
-
-  /**
-   * Obtener estado de registros para zona america
-   */
-  async getEstadoZonaAmerica() {
-    return this.request('/visitazonaamerica/estado-registros');
-  }
-
-  /**
-   * Obtener estado de registros para technological touch
-   */
-  async getEstadoTechnological() {
-    return this.request('/technological/estado-registros');
-  }
-
-  // ===== MÉTODOS ADICIONALES =====
 
   /**
    * Buscar inscripción por ID
    * @param {string} id - ID de la inscripción
    */
   async buscarInscripcion(id) {
-    return this.request(`/api/buscar-inscripcion/${id}`);
+    return this.request(`/organizador/buscar-inscripcion/${id}`);
   }
+
+  // ===== MÉTODOS ADICIONALES DE SEGURIDAD =====
+
+  /**
+   * Cambiar contraseña del usuario
+   * @param {string} usuarioId - ID del usuario
+   * @param {string} passwordActual - Contraseña actual
+   * @param {string} nuevaPassword - Nueva contraseña
+   */
+  async cambiarPassword(usuarioId, passwordActual, nuevaPassword) {
+    return this.request('/organizador/cambiar-password', {
+      method: 'PUT',
+      body: JSON.stringify({ usuarioId, passwordActual, nuevaPassword })
+    });
+  }
+
+  /**
+   * Solicitar recuperación de contraseña
+   * @param {string} usuario - Nombre de usuario o email
+   */
+  async solicitarRecuperacionPassword(usuario) {
+    return this.request('/organizador/recuperar-password', {
+      method: 'POST',
+      body: JSON.stringify({ usuario })
+    });
+  }
+
+  /**
+   * Verificar código de recuperación
+   * @param {string} usuario - Nombre de usuario
+   * @param {string} codigoRecuperacion - Código de recuperación
+   */
+  async verificarCodigoRecuperacion(usuario, codigoRecuperacion) {
+    return this.request('/organizador/verificar-codigo-recuperacion', {
+      method: 'POST',
+      body: JSON.stringify({ usuario, codigoRecuperacion })
+    });
+  }
+
+  /**
+   * Restablecer contraseña con código de recuperación
+   * @param {string} usuario - Nombre de usuario
+   * @param {string} codigoRecuperacion - Código de recuperación
+   * @param {string} nuevaPassword - Nueva contraseña
+   */
+  async restablecerPassword(usuario, codigoRecuperacion, nuevaPassword) {
+    return this.request('/organizador/restablecer-password', {
+      method: 'POST',
+      body: JSON.stringify({ usuario, codigoRecuperacion, nuevaPassword })
+    });
+  }
+
+  // ===== MÉTODOS DE AUDITORÍA =====
 
   /**
    * Obtener logs de acceso del usuario
@@ -231,28 +245,15 @@ class APIClient {
    * @param {number} limite - Número máximo de logs a obtener
    */
   async obtenerLogsAcceso(usuarioId, limite = 50) {
-    return this.request(`/api/logs-acceso?usuarioId=${usuarioId}&limite=${limite}`);
-  }
-
-  // ===== MÉTODOS DE UTILIDAD =====
-
-  /**
-   * Verificar salud del servidor
-   */
-  async healthCheck() {
-    return this.request('/health');
+    return this.request(`/organizador/logs-acceso?usuarioId=${usuarioId}&limite=${limite}`);
   }
 
   /**
-   * Obtener información del servidor
+   * Obtener estadísticas de seguridad
    */
-  async getServerInfo() {
-    return this.request('/api/info');
+  async obtenerEstadisticasSeguridad() {
+    return this.request('/organizador/estadisticas-seguridad');
   }
 }
 
-// Crear instancia única del cliente API
 export const apiClient = new APIClient();
-
-// Exportar la URL base para uso en otros componentes si es necesario
-export { API_BASE_URL };
