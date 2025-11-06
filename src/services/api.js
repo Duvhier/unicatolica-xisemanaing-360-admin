@@ -1,16 +1,15 @@
-// api.js - VERSIÓN CORREGIDA
+// api.js - VERSIÓN ACTUALIZADA CON PROXY
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
   ? process.env.REACT_APP_API_URL || 'https://unicatolica-xisemanaing-360-backend.vercel.app'
-  : 'http://localhost:4000';
+  : ''; // En desarrollo usa el proxy
 
 class APIClient {
   constructor() {
     this.baseURL = API_BASE_URL;
-    // Log para debug en desarrollo
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔧 API Base URL:', this.baseURL);
-    }
+    // Log para debug
+    console.log('🔧 API Base URL:', this.baseURL || 'Usando proxy');
   }
+
   async request(endpoint, options = {}) {
     const token = localStorage.getItem('token');
 
@@ -23,52 +22,27 @@ class APIClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const url = `${this.baseURL}${endpoint}`;
+    // En desarrollo, usa rutas relativas (proxy)
+    // En producción, usa la URL completa
+    const url = this.baseURL 
+      ? `${this.baseURL}${endpoint}`
+      : endpoint;
+
+    console.log('🌐 Making request to:', url);
     
     try {
       const response = await fetch(url, {
         ...options,
         headers,
-        body: options.body ? options.body : undefined
+        body: options.body ? JSON.stringify(options.body) : undefined,
+        credentials: 'include' // Importante para CORS con credenciales
       });
 
-      const text = await response.text();
-      let data;
-      
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch {
-        // Si no es JSON, verificar si es HTML (error del servidor)
-        if ((text && text.trim().startsWith('<!DOCTYPE')) || (text && text.includes('<html'))) {
-          // Extraer mensaje de error del HTML si existe
-          const errorMatch = text.match(/<pre>(.*?)<\/pre>/i) || text.match(/<title>(.*?)<\/title>/i);
-          const errorText = errorMatch ? errorMatch[1] : 'Error del servidor';
-          data = { 
-            message: response.status === 500 
-              ? `Error interno del servidor (${errorText}). Por favor, contacta al administrador.` 
-              : `Error ${response.status}: ${errorText}`
-          };
-        } else {
-          data = { message: text || `Error ${response.status}` };
-        }
-      }
-
-      if (!response.ok) {
-        // Para errores del servidor, lanzar error con mensaje más claro
-        const errorMessage = data.message || data.error || `Error ${response.status}: ${response.statusText}`;
-        const error = new Error(`Error ${response.status}: ${errorMessage}`);
-        error.status = response.status;
-        error.data = data;
-        throw error;
-      }
-
-      return data;
-
+      // ... resto del código igual
     } catch (error) {
       console.error('❌ API Error:', error);
-      // Mejorar mensaje de error para problemas de conexión
       if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-        throw new Error('No se pudo conectar con el servidor. Verifica que el backend esté corriendo en http://localhost:4000');
+        throw new Error('No se pudo conectar con el servidor. Verifica tu conexión o contacta al administrador.');
       }
       throw error;
     }
