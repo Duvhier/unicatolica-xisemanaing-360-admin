@@ -1,255 +1,234 @@
-/* Estilos para el componente Scanner */
-.admin-container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 20px;
+/* ===== SCANNER PAGE ===== */
+.scanner-page {
+  min-height: 100vh;
+  background: var(--background-light);
 }
 
-/* Header idéntico a tu dashboard */
-.admin-header {
-  background: white;
-  border-radius: 12px;
+.scanner-main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* ===== HEADER DEL SCANNER ===== */
+.scanner-header {
+  background: var(--background);
+  border-radius: var(--radius);
   padding: 24px;
   margin-bottom: 24px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  border: 1px solid #e2e8f0;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-light);
 }
 
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.admin-header h1 {
-  color: #1a202c;
-  font-size: 28px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.user-info {
+.scanner-title-section {
   display: flex;
   align-items: center;
   gap: 16px;
-  flex-wrap: wrap;
 }
 
-.user-info span {
-  font-weight: 600;
-  color: #2d3748;
-  font-size: 16px;
-}
-
-/* Layout principal */
-.scanner-main {
-  display: grid;
-  grid-template-columns: 1fr 400px;
-  gap: 24px;
-  align-items: start;
-}
-
-/* Scanner container */
-.scanner-container {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  border: 1px solid #e2e8f0;
-  text-align: center;
+.scanner-title-icon {
+  color: var(--primary);
 }
 
 .scanner-title {
-  color: #2d3748;
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
-  margin-bottom: 20px;
+  color: var(--text);
+  margin: 0 0 4px 0;
+}
+
+.scanner-subtitle {
+  font-size: 16px;
+  color: var(--text-light);
+  margin: 0;
+}
+
+/* ===== CONTROLES SUPERIORES ===== */
+.scanner-controls-section {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 24px;
+  align-items: end;
+  margin-bottom: 24px;
+}
+
+.event-selector-container {
+  background: var(--background);
+  padding: 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow);
+}
+
+.event-selector-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.event-selector {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: var(--font-primary);
+  background: var(--background);
+  color: var(--text);
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.event-selector:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0, 91, 170, 0.1);
+}
+
+.event-selector:disabled {
+  background: var(--background-light);
+  color: var(--text-lighter);
+  cursor: not-allowed;
+}
+
+/* ===== ESTADO DE LA CÁMARA ===== */
+.camera-status {
+  background: var(--background);
+  padding: 16px 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow);
+  min-width: 200px;
+}
+
+.camera-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-lighter);
+  position: relative;
+}
+
+.status-dot.recording {
+  background: var(--success);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.status-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.camera-status.error .status-dot {
+  background: var(--error);
+}
+
+.camera-status.error .status-text {
+  color: var(--error);
+}
+
+.camera-status.active .status-text {
+  color: var(--success);
+}
+
+/* ===== ÁREA DEL SCANNER ===== */
+.scanner-area {
+  position: relative;
+  background: var(--background);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-light);
+  margin-bottom: 24px;
+  min-height: 400px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  overflow: hidden;
 }
 
 .qr-reader {
   width: 100%;
-  max-width: 500px;
-  margin: 0 auto 25px;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 2px solid #e2e8f0;
-  min-height: 300px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f8fafc;
+  height: 100%;
+  min-height: 400px;
 }
 
-.scanner-controls {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-/* Información del usuario */
-.user-info-container {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  border: 1px solid #e2e8f0;
-  height: fit-content;
-}
-
-.user-info-container h3 {
-  color: #2d3748;
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.user-details {
-  background: #f8fafc;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
-
-.user-detail {
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.user-detail:last-child {
-  margin-bottom: 0;
-  border-bottom: none;
-}
-
-.user-detail strong {
-  color: #4a5568;
-  display: block;
-  font-size: 14px;
-  margin-bottom: 4px;
-  font-weight: 600;
-}
-
-.user-detail span {
-  color: #2d3748;
-  font-weight: 600;
-}
-
-.action-buttons {
+/* Placeholder cuando no hay cámara activa */
+.scanner-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-/* Resultados del scan - estilo de badges */
-.scan-result {
-  margin-top: 20px;
-  padding: 16px;
-  border-radius: 8px;
-  text-align: center;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.scan-result.success {
-  background: #c6f6d5;
-  color: #276749;
-  border: 1px solid #9ae6b4;
-}
-
-.scan-result.error {
-  background: #fed7d7;
-  color: #c53030;
-  border: 1px solid #feb2b2;
-}
-
-.scan-result.info {
-  background: #bee3f8;
-  color: #2c5aa0;
-  border: 1px solid #90cdf4;
-}
-
-/* Estados de cámara */
-.camera-status {
-  margin: 16px 0;
-  padding: 12px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 16px;
+  text-align: center;
+  padding: 40px;
+  color: var(--text-light);
 }
 
-.camera-status.active {
-  background: #c6f6d5;
-  color: #276749;
-  border: 1px solid #9ae6b4;
+.placeholder-icon {
+  opacity: 0.3;
 }
 
-.camera-status.inactive {
-  background: #fed7d7;
-  color: #c53030;
-  border: 1px solid #feb2b2;
-}
-
-.camera-status.starting {
-  background: #fffaf0;
-  color: #dd6b20;
-  border: 1px solid #fbd38d;
-}
-
-.camera-status.scanned {
-  background: #e6fffa;
-  color: #234e52;
-  border: 1px solid #81e6d9;
-}
-
-.camera-status.error {
-  background: #fed7d7;
-  color: #c53030;
-  border: 1px solid #feb2b2;
-}
-
-/* Badges idénticos a tu código */
-.badge {
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
+.scanner-placeholder h3 {
+  font-size: 18px;
   font-weight: 600;
-  display: inline-block;
+  color: var(--text);
+  margin: 0;
 }
 
-.badge-success {
-  background: #c6f6d5;
-  color: #276749;
+.scanner-placeholder p {
+  font-size: 14px;
+  margin: 0;
+  max-width: 300px;
+  line-height: 1.5;
 }
 
-.badge-danger {
-  background: #fed7d7;
-  color: #c53030;
+/* Loading overlay */
+.scanner-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.95);
+  z-index: 10;
 }
 
-/* Loading spinner */
-.loading-spinner {
-  border: 2px solid #f3f3f3;
-  border-top: 2px solid currentColor;
-  border-radius: 50%;
-  width: 16px;
-  height: 16px;
+.scanner-loading .loading-spinner-icon {
   animation: spin 1s linear infinite;
+  color: var(--primary);
+}
+
+.scanner-loading p {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-light);
+  margin: 0;
 }
 
 @keyframes spin {
@@ -257,51 +236,143 @@
   100% { transform: rotate(360deg); }
 }
 
-/* Responsive */
-@media (max-width: 1024px) {
-  .scanner-main {
-    grid-template-columns: 1fr;
-  }
+/* ===== CONTROLES DEL SCANNER ===== */
+.scanner-controls {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
 }
 
+.btn-scanner-start {
+  min-width: 160px;
+}
+
+.scanner-controls .btn {
+  padding: 12px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.scanner-controls .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ===== MENSAJES DE ESTADO ===== */
+.scan-message {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: 24px;
+}
+
+.scan-message.info {
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+.scan-message.success {
+  background: var(--success-light);
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+
+.scan-message.error {
+  background: var(--error-light);
+  color: var(--error);
+  border: 1px solid var(--error);
+}
+
+.message-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.message-content {
+  flex: 1;
+}
+
+.message-content p {
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
-  .admin-container {
+  .scanner-main {
     padding: 16px;
   }
   
-  .header-content {
+  .scanner-header {
+    padding: 20px;
+  }
+  
+  .scanner-title-section {
     flex-direction: column;
     text-align: center;
+    gap: 12px;
+  }
+  
+  .scanner-controls-section {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .camera-status {
+    min-width: auto;
   }
   
   .scanner-controls {
     flex-direction: column;
   }
   
-  .btn {
-    width: 100%;
+  .scanner-controls .btn {
     justify-content: center;
-  }
-  
-  .admin-header,
-  .scanner-container,
-  .user-info-container {
-    padding: 20px;
-  }
-  
-  .qr-reader {
-    min-height: 250px;
   }
 }
 
 @media (max-width: 480px) {
-  .user-info {
-    flex-direction: column;
-    width: 100%;
+  .scanner-area {
+    min-height: 300px;
   }
   
-  .user-info > * {
-    width: 100%;
+  .scanner-placeholder,
+  .scanner-loading {
+    padding: 20px;
+  }
+  
+  .scanner-placeholder h3 {
+    font-size: 16px;
+  }
+  
+  .scanner-placeholder p {
+    font-size: 13px;
   }
 }
 
+/* ===== PREFERENCIAS DE REDUCCIÓN DE MOVIMIENTO ===== */
+@media (prefers-reduced-motion: reduce) {
+  .status-dot.recording {
+    animation: none;
+  }
+  
+  .loading-spinner-icon {
+    animation: none;
+  }
+}

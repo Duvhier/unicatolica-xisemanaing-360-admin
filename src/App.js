@@ -5,6 +5,7 @@ import Scanner from './components/Scanner';
 import './styles/Login.css';
 import './styles/Dashboard.css';
 import './styles/Scanner.css';
+import './styles/theme.css';
 
 function App() {
   const [currentView, setCurrentView] = useState('login');

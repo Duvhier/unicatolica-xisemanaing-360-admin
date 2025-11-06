@@ -1,47 +1,48 @@
 import React from 'react';
+import { LogOut, QrCode, User } from 'lucide-react';
+import ThemeToggle from './ThemeToggle';
+import '../styles/Header.css';
 
-const Header = ({ 
-  userName, 
-  onScannerClick, 
-  onDashboardClick, 
-  onLogout,
-  showScannerButton = true,
-  showDashboardButton = false 
-}) => {
+const Header = ({ userName, onScannerClick, onLogout }) => {
   return (
-    <header className={showDashboardButton ? "admin-header" : "dashboard-header"}>
-      <div className={showDashboardButton ? "header-content" : "header-top"}>
-        <h1>
-          {showDashboardButton ? '📱 Scanner QR' : '📊 Panel de Administración'}
-        </h1>
-        <div className="user-info">
-          {!showDashboardButton && (
-            <div className="user-details">
-              <div className="welcome">Bienvenido,</div>
-              <div className="name">{userName}</div>
-            </div>
-          )}
-          {showDashboardButton && (
-            <span>{userName}</span>
-          )}
-          {showScannerButton && (
-            <button onClick={onScannerClick} className="btn btn-primary">
-              📱 Scanner QR
-            </button>
-          )}
-          {showDashboardButton && (
-            <button onClick={onDashboardClick} className="btn btn-secondary">
-              📊 Volver al Dashboard
-            </button>
-          )}
-          <button onClick={onLogout} className="btn btn-danger">
-            🚪 Cerrar Sesión
-          </button>
+    <header className="dashboard-header-bar">
+      <div className="header-left">
+        <div className="logo">
+          <div className="logo-icon">📊</div>
+          <h1>Dashboard Admin</h1>
         </div>
+      </div>
+
+      <div className="header-right">
+        <div className="user-info">
+          <User size={18} />
+          <span className="user-name">{userName}</span>
+        </div>
+
+        <ThemeToggle />
+
+        {onScannerClick && (
+          <button 
+            className="header-btn scanner-btn"
+            onClick={onScannerClick}
+            title="Escanear QR"
+          >
+            <QrCode size={18} />
+            <span>Escáner</span>
+          </button>
+        )}
+
+        <button 
+          className="header-btn logout-btn"
+          onClick={onLogout}
+          title="Cerrar sesión"
+        >
+          <LogOut size={18} />
+          <span>Salir</span>
+        </button>
       </div>
     </header>
   );
 };
 
 export default Header;
-

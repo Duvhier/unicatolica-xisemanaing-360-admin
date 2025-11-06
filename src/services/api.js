@@ -1,15 +1,16 @@
 // api.js - VERSIÓN CORREGIDA
-// Usar URL relativa en desarrollo (para usar el proxy) o URL completa en producción
-
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://unicatolica-xisemanaing-360-backend.vercel.app'
-  : 'http://localhost:4000'; // URL directa al backend en desarrollo
+  ? process.env.REACT_APP_API_URL || 'https://unicatolica-xisemanaing-360-backend.vercel.app'
+  : 'http://localhost:4000';
 
 class APIClient {
   constructor() {
     this.baseURL = API_BASE_URL;
+    // Log para debug en desarrollo
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔧 API Base URL:', this.baseURL);
+    }
   }
-
   async request(endpoint, options = {}) {
     const token = localStorage.getItem('token');
 

@@ -1,0 +1,47 @@
+.pdf-export-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+  }
+  
+  .pdf-export-button:hover:not(:disabled) {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    transform: translateY(-2px);
+  }
+  
+  .pdf-export-button:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
+  }
+  
+  .pdf-export-button:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+    opacity: 0.6;
+    box-shadow: none;
+  }
+  
+  .pdf-export-button svg {
+    flex-shrink: 0;
+  }
+  
+  @media (max-width: 768px) {
+    .pdf-export-button span {
+      display: none;
+    }
+    
+    .pdf-export-button {
+      padding: 10px;
+    }
+  }

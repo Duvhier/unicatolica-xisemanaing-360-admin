@@ -1,310 +1,271 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiClient } from '../services/api';
 import '../styles/Login.css';
+import fondoLogin from '../assets/fondologin.png';
+import logoUnicatolica from '../assets/QR-UNICATOLICA1.png';
+
+// Constantes para mejor mantenibilidad
+const LOGIN_STEPS = {
+  LOGIN: 'login',
+  VERIFY_2FA: 'verificar_2fa'
+};
+
+const TIMEOUTS = {
+  RESEND_CODE: 120, // 2 minutos
+  SESSION_CHECK: 5000 // 5 segundos
+};
 
 const Login = ({ onLoginSuccess }) => {
-  // Estados para el flujo de autenticación
-  const [credentials, setCredentials] = useState({ usuario: '', password: '' });
+  // Estados
+  const [credentials, setCredentials] = useState({ 
+    usuario: '', 
+    password: '' 
+  });
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
-  // Estados para 2FA
-  const [pasoActual, setPasoActual] = useState('login'); // 'login', 'solicitar_2fa', 'verificar_2fa'
-  const [usuarioData, setUsuarioData] = useState(null);
-  const [codigo2FA, setCodigo2FA] = useState('');
-  const [contadorReenvio, setContadorReenvio] = useState(0);
-  const [tiempoRestante, setTiempoRestante] = useState(0);
+  const [currentStep, setCurrentStep] = useState(LOGIN_STEPS.LOGIN);
+  const [userData, setUserData] = useState(null);
+  const [twoFACode, setTwoFACode] = useState('');
+  const [resendCount, setResendCount] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
-  // ✅ CORREGIDO: Usar useCallback para checkAuth
-  const checkAuth = useCallback(async () => {
+  // Refs
+  const passwordRef = useRef(null);
+  const twoFARef = useRef(null);
+
+  // Efecto para cargar usuario recordado
+  useEffect(() => {
+    const savedUser = localStorage.getItem('rememberedUser');
+    if (savedUser) {
+      setCredentials(prev => ({ ...prev, usuario: savedUser }));
+      setRememberMe(true);
+    }
+  }, []);
+
+  // Efecto para verificar autenticación existente
+  const checkExistingAuth = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
     try {
       await apiClient.getActividades();
       onLoginSuccess();
     } catch (error) {
+      console.warn('Sesión inválida:', error);
       localStorage.removeItem('token');
-      localStorage.removeItem('usuario');
+      localStorage.removeItem('userData');
     }
   }, [onLoginSuccess]);
 
-  // ✅ CORREGIDO: useEffect con dependencias correctas
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      checkAuth();
-    }
-  }, [checkAuth]);
+    checkExistingAuth();
+  }, [checkExistingAuth]);
 
-  // Timer para reenvío de código
+  // Efecto para el contador de tiempo
   useEffect(() => {
-    let intervalo;
-    if (tiempoRestante > 0) {
-      intervalo = setInterval(() => {
-        setTiempoRestante((tiempo) => tiempo - 1);
-      }, 1000);
-    }
-    return () => clearInterval(intervalo);
-  }, [tiempoRestante]);
+    if (timeRemaining <= 0) return;
 
+    const interval = setInterval(() => {
+      setTimeRemaining(time => time - 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timeRemaining]);
+
+  // Manejo de cambios en los inputs
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setCredentials(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    if (error) setError('');
+    setCredentials(prev => ({ ...prev, [name]: value }));
+    clearError();
   };
 
-  const handleCodigo2FAChange = (e) => {
+  const handleTwoFACodeChange = (e) => {
     const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-    setCodigo2FA(value);
-    if (error) setError('');
+    setTwoFACode(value);
+    clearError();
+
+    // Auto-submit cuando se completa el código
+    if (value.length === 6) {
+      setTimeout(() => handleVerify2FA(), 100);
+    }
   };
 
   const handleRememberMeChange = (e) => {
     setRememberMe(e.target.checked);
+    if (!e.target.checked) {
+      localStorage.removeItem('rememberedUser');
+    }
   };
 
-  // Paso 1: Login tradicional
+  const togglePasswordVisibility = () => {
+    setPasswordVisible(!passwordVisible);
+  };
+
+  // Utilidades
+  const clearError = () => {
+    if (error) setError('');
+  };
+
+  const handleError = (error) => {
+    let message = 'Error de conexión. Intenta nuevamente.';
+    
+    if (error.message?.includes('Failed to fetch')) {
+      message = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+    } else if (error.message?.includes('CORS')) {
+      message = 'Error de configuración del servidor. Contacta al administrador.';
+    } else if (error.status === 401) {
+      message = 'Credenciales inválidas. Verifica tu usuario y contraseña.';
+    } else if (error.status === 429) {
+      message = 'Demasiados intentos. Espera unos minutos.';
+    } else if (error.message) {
+      message = error.message;
+    }
+
+    setError(message);
+  };
+
+  // Manejo del login
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!credentials.usuario.trim() || !credentials.password.trim()) {
+    
+    if (!credentials.usuario?.trim() || !credentials.password) {
       setError('Por favor completa todos los campos');
       return;
     }
 
+    if (credentials.password.length < 4) {
+      setError('La contraseña debe tener al menos 4 caracteres');
+      return;
+    }
+
     setLoading(true);
-    setError('');
+    clearError();
 
     try {
-      console.log('🔐 Verificando credenciales...');
       const data = await apiClient.login(credentials);
-
-      // ✅ ADAPTADO: El backend de Vercel puede tener estructura diferente
-      if (!data.success && !data.token) {
-        throw new Error(data.message || data.error || 'Credenciales inválidas');
-      }
-
-      console.log('✅ Credenciales válidas, procediendo...');
       
-      // ✅ ADAPTADO: Manejar diferentes estructuras de respuesta
-      let usuarioId;
-      let usuarioInfo;
-
-      if (data.usuario) {
-        // Estructura: { success: true, usuario: { id, ... } }
-        usuarioId = data.usuario.id || data.usuario._id;
-        usuarioInfo = data.usuario;
-      } else if (data.user) {
-        // Estructura: { success: true, user: { id, ... } }
-        usuarioId = data.user.id || data.user._id;
-        usuarioInfo = data.user;
-      } else if (data.data) {
-        // Estructura: { success: true, data: { usuario: { id, ... } } }
-        usuarioId = data.data.usuario?.id || data.data.usuario?._id;
-        usuarioInfo = data.data.usuario;
-      } else {
-        // Estructura simple: { success: true, id, ... }
-        usuarioId = data.id || data._id;
-        usuarioInfo = data;
+      if (!data.success) {
+        throw new Error(data.message || 'Error en el inicio de sesión');
       }
 
-      if (!usuarioId) {
-        throw new Error('ID de usuario no encontrado en la respuesta');
+      const userId = data.user?.id || data.user?._id || data.usuario?.id || data.usuario?._id;
+      
+      if (!userId) {
+        throw new Error('Datos de usuario no válidos');
       }
 
-      // Guardar datos del usuario temporalmente
-      setUsuarioData({
-        ...usuarioInfo,
-        id: usuarioId
-      });
-
-      // ✅ ADAPTADO: Verificar si necesita 2FA o puede acceder directamente
-      if (data.token && !data.requires2FA) {
-        // Acceso directo sin 2FA
-        console.log('✅ Acceso directo concedido');
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('usuario', JSON.stringify(usuarioInfo));
-        onLoginSuccess();
-      } else {
-        // Proceder con 2FA
-        console.log('📱 Iniciando flujo 2FA...');
-        await solicitarCodigo2FA(usuarioId);
+      // Guardar usuario si "Recordar" está activado
+      if (rememberMe) {
+        localStorage.setItem('rememberedUser', credentials.usuario);
       }
 
-    } catch (err) {
-      console.error('❌ Error en login:', err);
-      manejarError(err);
+      setUserData(data.user || data.usuario);
+      await request2FACode(userId);
+
+    } catch (error) {
+      handleError(error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Paso 2: Solicitar código 2FA
-  const solicitarCodigo2FA = async (usuarioId) => {
+  // Solicitar código 2FA
+  const request2FACode = async (userId) => {
     try {
       setLoading(true);
-      console.log('📱 Solicitando código 2FA para usuario:', usuarioId);
+      const data = await apiClient.solicitarCodigo2FA(userId);
       
-      const data = await apiClient.solicitarCodigo2FA(usuarioId);
-
-      // ✅ ADAPTADO: Manejar diferentes estructuras de respuesta
-      if (!data.success && !data.message) {
-        throw new Error(data.error || 'Error al solicitar código de verificación');
+      if (!data.success) {
+        throw new Error(data.message || 'Error al enviar el código');
       }
 
-      console.log('✅ Código 2FA enviado');
-      setPasoActual('verificar_2fa');
-      setTiempoRestante(120); // 2 minutos para ingresar el código
-      setContadorReenvio(prev => prev + 1);
+      setCurrentStep(LOGIN_STEPS.VERIFY_2FA);
+      setTimeRemaining(TIMEOUTS.RESEND_CODE);
+      setResendCount(prev => prev + 1);
+      
+      // Focus en el input del código
+      setTimeout(() => {
+        if (twoFARef.current) {
+          twoFARef.current.focus();
+        }
+      }, 100);
 
-    } catch (err) {
-      console.error('❌ Error solicitando 2FA:', err);
-      manejarError(err);
+    } catch (error) {
+      handleError(error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Paso 3: Verificar código 2FA
-  const verificarCodigo2FA = async (e) => {
-    e.preventDefault();
-
-    if (!codigo2FA || codigo2FA.length !== 6) {
+  // Verificar código 2FA
+  const handleVerify2FA = async (e) => {
+    e?.preventDefault();
+    
+    if (twoFACode.length !== 6) {
       setError('Por favor ingresa el código de 6 dígitos');
       return;
     }
 
     setLoading(true);
-    setError('');
+    clearError();
 
     try {
-      console.log('🔢 Verificando código 2FA...');
+      const userId = userData?.id || userData?._id;
+      const data = await apiClient.verificarCodigo2FA(userId, twoFACode);
       
-      // Asegurar que tenemos el ID del usuario
-      const usuarioId = usuarioData?.id || usuarioData?._id;
-      
-      if (!usuarioId) {
-        throw new Error('ID de usuario no disponible. Por favor inicia sesión nuevamente.');
+      if (!data.success) {
+        throw new Error(data.message || 'Código inválido');
       }
 
-      const data = await apiClient.verificarCodigo2FA(usuarioId, codigo2FA);
-
-      // ✅ ADAPTADO: Manejar diferentes estructuras de respuesta
-      if (!data.success && !data.token) {
-        throw new Error(data.message || data.error || 'Código de verificación inválido');
-      }
-
-      if (!data.token) {
-        throw new Error('Token de sesión no recibido');
-      }
-
-      console.log('✅ Código 2FA válido, acceso concedido');
-
-      // Guardar en localStorage (solo después de verificar 2FA)
+      // Guardar datos de sesión
       localStorage.setItem('token', data.token);
+      localStorage.setItem('userData', JSON.stringify(data.user || data.usuario || userData));
       
-      // ✅ ADAPTADO: Obtener datos del usuario de la respuesta
-      const usuarioCompleto = data.usuario || data.user || data.data?.usuario || usuarioData;
-      localStorage.setItem('usuario', JSON.stringify(usuarioCompleto));
-
       onLoginSuccess();
 
-    } catch (err) {
-      console.error('❌ Error verificando 2FA:', err);
-      manejarError(err);
+    } catch (error) {
+      handleError(error);
+      // Limpiar código en caso de error
+      setTwoFACode('');
     } finally {
       setLoading(false);
     }
   };
 
-  // Reenviar código 2FA
-  const reenviarCodigo2FA = async () => {
-    if (contadorReenvio >= 3) {
-      setError('Has excedido el número máximo de reenvíos. Contacta al administrador.');
+  // Reenviar código
+  const handleResendCode = async () => {
+    if (resendCount >= 3) {
+      setError('Has excedido el número máximo de reenvíos.');
       return;
     }
 
-    if (tiempoRestante > 0) {
-      setError(`Espera ${tiempoRestante} segundos antes de solicitar otro código`);
+    if (timeRemaining > 0) {
+      setError(`Espera ${timeRemaining} segundos antes de reenviar.`);
       return;
     }
 
-    const usuarioId = usuarioData?.id || usuarioData?._id;
-    if (!usuarioId) {
-      setError('ID de usuario no disponible. Por favor inicia sesión nuevamente.');
-      return;
+    const userId = userData?.id || userData?._id;
+    if (userId) {
+      await request2FACode(userId);
     }
-
-    await solicitarCodigo2FA(usuarioId);
   };
 
-  // Volver al paso de login
-  const volverALogin = () => {
-    setPasoActual('login');
-    setCodigo2FA('');
-    setError('');
-    setTiempoRestante(0);
-    setUsuarioData(null);
+  // Volver al login
+  const backToLogin = () => {
+    setCurrentStep(LOGIN_STEPS.LOGIN);
+    setTwoFACode('');
+    clearError();
   };
 
-  // ✅ ACTUALIZADO: Manejo de errores para el backend de Vercel
-  const manejarError = (err) => {
-    let errorMessage = 'Error de conexión. Intenta nuevamente.';
-
-    // Manejar errores de red
-    if (err.message && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError'))) {
-      errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
-    } 
-    // Manejar errores CORS
-    else if (err.message && err.message.includes('CORS')) {
-      errorMessage = 'Error de configuración del servidor. Contacta al administrador.';
-    }
-    // Manejar errores HTTP específicos
-    else if (err.status) {
-      switch (err.status) {
-        case 401:
-          errorMessage = 'Credenciales inválidas. Verifica tu usuario y contraseña.';
-          break;
-        case 403:
-          errorMessage = 'Acceso denegado. No tienes permisos para acceder.';
-          break;
-        case 404:
-          errorMessage = 'Servicio no encontrado. Verifica la configuración del backend.';
-          break;
-        case 429:
-          errorMessage = 'Demasiadas solicitudes. Espera unos minutos antes de intentar nuevamente.';
-          break;
-        case 500:
-          errorMessage = 'Error interno del servidor. Intenta más tarde.';
-          break;
-        case 502:
-        case 503:
-        case 504:
-          errorMessage = 'El servidor no está disponible temporalmente. Intenta más tarde.';
-          break;
-        default:
-          errorMessage = `Error del servidor (${err.status}). Intenta nuevamente.`;
-      }
-    }
-    // Manejar mensajes de error del backend
-    else if (err.message && !err.message.includes('<!DOCTYPE') && !err.message.includes('<html')) {
-      errorMessage = err.message;
-    }
-    // Manejar errores de timeout
-    else if (err.name === 'TimeoutError' || err.code === 'ECONNABORTED') {
-      errorMessage = 'La solicitud tardó demasiado tiempo. Verifica tu conexión e intenta nuevamente.';
-    }
-
-    console.error('🔴 Error detallado:', err);
-    setError(errorMessage);
-  };
-
-  // Renderizar formulario de login tradicional
+  // Renderizado condicional
   const renderLoginForm = () => (
-    <form className="login-form" onSubmit={handleLogin}>
+    <form className="login-form" onSubmit={handleLogin} noValidate>
       <div className="form-group">
-        <label htmlFor="usuario">USUARIO</label>
+        <label htmlFor="usuario" className="form-label">
+          Usuario
+        </label>
         <input
           type="text"
           id="usuario"
@@ -315,166 +276,181 @@ const Login = ({ onLoginSuccess }) => {
           onChange={handleInputChange}
           disabled={loading}
           autoComplete="username"
+          autoFocus
         />
       </div>
 
       <div className="form-group">
-        <label htmlFor="password">CONTRASEÑA</label>
-        <input
-          type="password"
-          id="password"
-          name="password"
-          className="form-input"
-          placeholder="Ingresa tu contraseña"
-          value={credentials.password}
-          onChange={handleInputChange}
-          disabled={loading}
-          autoComplete="current-password"
-        />
+        <label htmlFor="password" className="form-label">
+          Contraseña
+        </label>
+        <div className="password-input-container">
+          <input
+            ref={passwordRef}
+            type={passwordVisible ? "text" : "password"}
+            id="password"
+            name="password"
+            className="form-input password-input"
+            placeholder="Ingresa tu contraseña"
+            value={credentials.password}
+            onChange={handleInputChange}
+            disabled={loading}
+            autoComplete="current-password"
+          />
+          <button
+            type="button"
+            className="password-toggle"
+            onClick={togglePasswordVisibility}
+            tabIndex="-1"
+          >
+            {passwordVisible ? '🙈' : '👁️'}
+          </button>
+        </div>
       </div>
 
-      <div className="remember-forgot">
-        <label className="remember-me">
+      <div className="form-options">
+        <label className="checkbox-label">
           <input
             type="checkbox"
             checked={rememberMe}
             onChange={handleRememberMeChange}
             disabled={loading}
           />
+          <span className="checkmark"></span>
           Recordar usuario
         </label>
-        <a href="#forgot" className="forgot-password">
-          ¿Olvidaste tu contraseña?
-        </a>
       </div>
 
-      <button
-        type="submit"
-        className="login-button"
-        disabled={loading}
+      <button 
+        type="submit" 
+        className="login-button" 
+        disabled={loading || !credentials.usuario || !credentials.password}
       >
         {loading ? (
-          <>
+          <div className="button-loading">
             <div className="loading-spinner"></div>
-            VERIFICANDO...
-          </>
+            <span>Verificando...</span>
+          </div>
         ) : (
-          'CONTINUAR'
+          'Ingresar'
         )}
       </button>
     </form>
   );
 
-  // Renderizar formulario de verificación 2FA
-  const renderVerificacion2FA = () => (
-    <form className="login-form" onSubmit={verificarCodigo2FA}>
+  const render2FAVerification = () => (
+    <form className="login-form" onSubmit={handleVerify2FA} noValidate>
       <div className="security-info">
-        <div className="security-icon">📱</div>
-        <h3>Verificación por WhatsApp</h3>
-        <p className="security-message">
-          Se ha enviado un código de 6 dígitos por WhatsApp
-          {usuarioData?.telefono ? ` al número terminado en ${usuarioData.telefono.slice(-4)}` : ''}
-        </p>
-        <div className="whatsapp-tip">
-          💡 <strong>Tip:</strong> Revisa tu aplicación de WhatsApp
-        </div>
+        <div className="security-icon">🔒</div>
+        <h3>Verificación de Seguridad</h3>
+        <p>Hemos enviado un código de 6 dígitos a tu WhatsApp</p>
+        <p className="user-email">{userData?.email || userData?.correo || ''}</p>
       </div>
 
       <div className="form-group">
-        <label htmlFor="codigo2FA">CÓDIGO DE VERIFICACIÓN</label>
+        <label htmlFor="twoFACode" className="form-label">
+          Código de verificación
+        </label>
         <input
+          ref={twoFARef}
           type="text"
-          id="codigo2FA"
-          name="codigo2FA"
-          className="form-input codigo-2fa"
+          id="twoFACode"
+          name="twoFACode"
+          className="form-input code-input"
           placeholder="000000"
-          value={codigo2FA}
-          onChange={handleCodigo2FAChange}
+          value={twoFACode}
+          onChange={handleTwoFACodeChange}
           disabled={loading}
-          maxLength={6}
           inputMode="numeric"
           pattern="[0-9]*"
+          autoComplete="one-time-code"
         />
-        <div className="codigo-hint">Ingresa el código de 6 dígitos</div>
+        <div className="code-hint">Ingresa el código de 6 dígitos</div>
       </div>
 
-      <div className="reenvio-codigo">
-        <button
-          type="button"
-          className="btn-reenvio"
-          onClick={reenviarCodigo2FA}
-          disabled={loading || tiempoRestante > 0 || contadorReenvio >= 3}
-        >
-          {tiempoRestante > 0 ? `Reenviar en ${tiempoRestante}s` : 'Reenviar código'}
-        </button>
-        <span className="contador-reenvio">
-          {contadorReenvio > 0 && `(${contadorReenvio}/3 intentos)`}
-        </span>
+      <div className="resend-section">
+        {timeRemaining > 0 ? (
+          <span className="resend-timer">
+            Podrás reenviar en {timeRemaining}s
+          </span>
+        ) : (
+          <button
+            type="button"
+            className="resend-button"
+            onClick={handleResendCode}
+            disabled={resendCount >= 3}
+          >
+            Reenviar código ({3 - resendCount} intentos restantes)
+          </button>
+        )}
       </div>
 
-      <div className="acciones-2fa">
-        <button
-          type="button"
-          className="btn-volver"
-          onClick={volverALogin}
-          disabled={loading}
-        >
-          ‹ Volver
-        </button>
-        <button
-          type="submit"
-          className="login-button"
-          disabled={loading || codigo2FA.length !== 6}
-        >
-          {loading ? (
-            <>
-              <div className="loading-spinner"></div>
-              VERIFICANDO...
-            </>
-          ) : (
-            'VERIFICAR Y ACCEDER'
-          )}
-        </button>
-      </div>
+      <button
+        type="submit"
+        className="login-button"
+        disabled={loading || twoFACode.length !== 6}
+      >
+        {loading ? (
+          <div className="button-loading">
+            <div className="loading-spinner"></div>
+            <span>Verificando...</span>
+          </div>
+        ) : (
+          'Verificar y acceder'
+        )}
+      </button>
+
+      <button 
+        type="button" 
+        className="back-button" 
+        onClick={backToLogin}
+        disabled={loading}
+      >
+        ← Volver al login
+      </button>
     </form>
   );
 
   return (
     <div className="login-page">
+      <div 
+        className="login-background"
+        style={{ backgroundImage: `url(${fondoLogin})` }}
+      >
+        <div className="login-overlay"></div>
+      </div>
+
       <div className="login-container">
         <div className="login-header">
-          <h1>
-            {pasoActual === 'verificar_2fa' ? 'VERIFICACIÓN' : 'INICIAR SESIÓN'}
-          </h1>
-          <p>
-            {pasoActual === 'verificar_2fa'
-              ? 'Ingresa el código de seguridad'
-              : 'Accede al panel de administración'}
+          <img 
+            src={logoUnicatolica} 
+            alt="Unicatólica" 
+            className="login-logo" 
+          />
+          <h1 className="login-title">LumenAsist</h1>
+          <p className="login-subtitle">
+            {currentStep === LOGIN_STEPS.LOGIN 
+              ? 'Accede a tu cuenta' 
+              : 'Verifica tu identidad'
+            }
           </p>
         </div>
 
-        {pasoActual === 'login' ? renderLoginForm() : renderVerificacion2FA()}
+        {currentStep === LOGIN_STEPS.LOGIN 
+          ? renderLoginForm() 
+          : render2FAVerification()
+        }
 
         {error && (
           <div className="error-message">
-            ⚠️ {error}
+            <span className="error-icon">⚠️</span>
+            {error}
           </div>
         )}
 
-        {/* Información de debug para desarrollo */}
-        {process.env.NODE_ENV === 'development' && (
-          <div style={{ 
-            marginTop: '1rem', 
-            padding: '0.5rem', 
-            background: '#f5f5f5', 
-            borderRadius: '4px', 
-            fontSize: '0.75rem',
-            color: '#666',
-            textAlign: 'center'
-          }}>
-            Backend: {import.meta.env.VITE_API_URL || 'No configurado'}
-          </div>
-        )}
+        <div className="login-footer">
+          © 2025 Fundación Universitaria Católica Lumen Gentium
+        </div>
       </div>
     </div>
   );

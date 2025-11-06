@@ -1,5 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import { 
+  QrCode, 
+  Camera, 
+  CameraOff, 
+  RotateCcw, 
+  Play, 
+  Square,
+  AlertCircle,
+  CheckCircle,
+  Info,
+  Users,
+  Loader2
+} from 'lucide-react';
 import { apiClient } from '../services/api';
 import Header from './Header';
 import UserInfoCard from './UserInfoCard';
@@ -84,13 +97,11 @@ const Scanner = ({ onDashboardClick, onLogout }) => {
         throw new Error('Elemento qr-reader no encontrado');
       }
 
-      // ✅ CORREGIDO: Remover Html5QrcodeScanType que no está definido
       scannerRef.current = new Html5QrcodeScanner(
         'qr-reader',
         {
           fps: 10,
           qrbox: { width: 250, height: 250 },
-          // ✅ SIMPLIFICADO: Remover supportedScanTypes que causaba error
         },
         false // verbose
       );
@@ -98,19 +109,17 @@ const Scanner = ({ onDashboardClick, onLogout }) => {
       // Configurar callbacks
       scannerRef.current.render(
         (decodedText) => {
-          // QR escaneado exitosamente
           console.log('✅ QR escaneado:', decodedText);
           handleQRScanned(decodedText);
         },
         (error) => {
-          // Error durante el escaneo (no fatal)
           console.log('ℹ️ Info escaneo:', error);
         }
       );
 
       setIsScanning(true);
       setMessage({
-        text: '🎥 Cámara activa - Escaneando...',
+        text: 'Cámara activa - Escaneando códigos QR...',
         type: 'info'
       });
 
@@ -118,7 +127,7 @@ const Scanner = ({ onDashboardClick, onLogout }) => {
       console.error('❌ Error iniciando scanner:', error);
       setScanError(error.message);
       setMessage({
-        text: `❌ Error: ${error.message}`,
+        text: `Error: ${error.message}`,
         type: 'error'
       });
     } finally {
@@ -135,7 +144,7 @@ const Scanner = ({ onDashboardClick, onLogout }) => {
 
       setIsScanning(false);
       setMessage({
-        text: '⏸️ Scanner detenido',
+        text: 'Scanner detenido',
         type: 'info'
       });
     } catch (error) {
@@ -150,33 +159,28 @@ const Scanner = ({ onDashboardClick, onLogout }) => {
     try {
       console.log('🔍 Procesando QR:', qrData);
 
-      // ✅ CORRECCIÓN: Extraer el ID del objeto JSON del QR
       let inscripcionId = qrData;
 
       try {
-        // Intentar parsear como JSON
         const qrObject = JSON.parse(qrData);
         if (qrObject && qrObject.id) {
           inscripcionId = qrObject.id;
           console.log('✅ ID extraído del QR:', inscripcionId);
         }
       } catch (jsonError) {
-        // Si no es JSON válido, usar el valor directamente
         console.log('ℹ️ QR no es JSON, usando valor directo:', qrData);
       }
 
-      // Detener scanner temporalmente
       if (scannerRef.current) {
         await scannerRef.current.clear();
       }
 
-      // ✅ CORREGIDO: Pasar solo el ID, no el objeto completo
       const result = await apiClient.buscarInscripcion(inscripcionId, selectedEvent);
 
       if (result.success && result.inscripcion) {
         setUserInfo(result.inscripcion);
         setMessage({
-          text: '✅ Usuario encontrado correctamente',
+          text: 'Usuario encontrado correctamente',
           type: 'success'
         });
       } else {
@@ -185,11 +189,10 @@ const Scanner = ({ onDashboardClick, onLogout }) => {
     } catch (error) {
       console.error('Error procesando QR:', error);
       setMessage({
-        text: `❌ Error: ${error.message}`,
+        text: `Error: ${error.message}`,
         type: 'error'
       });
 
-      // Reiniciar después de 3 segundos
       setTimeout(() => {
         resetScannerState();
       }, 3000);
@@ -212,13 +215,11 @@ const Scanner = ({ onDashboardClick, onLogout }) => {
 
       if (result.success) {
         setMessage({
-          text: '✅ Asistencia confirmada exitosamente',
+          text: 'Asistencia confirmada exitosamente',
           type: 'success'
         });
-        // Actualizar información del usuario
         setUserInfo(prev => ({ ...prev, asistencia: true }));
 
-        // Reiniciar después de 2 segundos
         setTimeout(() => {
           resetScannerState();
         }, 2000);
@@ -228,7 +229,7 @@ const Scanner = ({ onDashboardClick, onLogout }) => {
     } catch (error) {
       console.error('Error confirmando asistencia:', error);
       setMessage({
-        text: `❌ Error: ${error.message}`,
+        text: `Error: ${error.message}`,
         type: 'error'
       });
     } finally {
@@ -237,11 +238,9 @@ const Scanner = ({ onDashboardClick, onLogout }) => {
   };
 
   const handleStartScanner = async () => {
-    // Verificar permisos de cámara primero
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       console.log('✅ Permisos de cámara concedidos');
-      // Liberar cámara inmediatamente después de verificar permisos
       stream.getTracks().forEach(track => track.stop());
 
       await startScanner();
@@ -270,7 +269,6 @@ const Scanner = ({ onDashboardClick, onLogout }) => {
       type: 'info'
     });
 
-    // Si estaba escaneando, reiniciar
     if (isScanning) {
       setTimeout(() => {
         startScanner();
@@ -278,64 +276,121 @@ const Scanner = ({ onDashboardClick, onLogout }) => {
     }
   };
 
-  const getCameraStatusText = () => {
-    if (scanError) return `❌ Error: ${scanError}`;
-    if (loading) return '🔄 Cargando...';
-    if (isScanning) return '🎥 Cámara activa - Escaneando...';
-    return '⏸️ Cámara inactiva';
-  };
-
-  const getCameraStatusClass = () => {
-    if (scanError) return 'camera-status error';
-    if (isScanning) return 'camera-status active';
-    return 'camera-status inactive';
+  const getMessageIcon = () => {
+    switch (message.type) {
+      case 'success':
+        return <CheckCircle size={20} />;
+      case 'error':
+        return <AlertCircle size={20} />;
+      case 'info':
+        return <Info size={20} />;
+      default:
+        return <Info size={20} />;
+    }
   };
 
   return (
-    <div className="admin-container">
+    <div className="scanner-page">
       <Header
         userName={userName}
-        onDashboardClick={onDashboardClick}
+        onScannerClick={onDashboardClick}
         onLogout={onLogout}
-        showScannerButton={false}
-        showDashboardButton={true}
       />
 
       <main className="scanner-main">
         <div className="scanner-container">
-          <h2 className="scanner-title">🔍 Escanear Código QR</h2>
+          {/* Header del Scanner */}
+          <div className="scanner-header">
+            <div className="scanner-title-section">
+              <QrCode size={32} className="scanner-title-icon" />
+              <div>
+                <h1 className="scanner-title">Escaner de Códigos QR</h1>
+                <p className="scanner-subtitle">
+                  Escanea códigos QR para registrar asistencias
+                </p>
+              </div>
+            </div>
+          </div>
 
           {/* Selector de evento */}
-          <div className="event-selector">
-            <label>Evento:</label>
-            <select
-              value={selectedEvent}
-              onChange={(e) => setSelectedEvent(e.target.value)}
-              disabled={isScanning}
-            >
-              <option value="">Seleccionar evento...</option>
-              <option value="inscripciones">Inscripciones Generales</option>
-              <option value="asistenciainaugural">Asistencia Inaugural</option>
-              <option value="liderazgo">Liderazgo</option>
-              <option value="hackathon">Hackathon</option>
-            </select>
+          <div className="scanner-controls-section">
+            <div className="event-selector-container">
+              <label className="event-selector-label">
+                <Users size={18} />
+                Evento a escanear
+              </label>
+              <select
+                className="event-selector"
+                value={selectedEvent}
+                onChange={(e) => setSelectedEvent(e.target.value)}
+                disabled={isScanning || loading}
+              >
+                <option value="">Seleccionar evento...</option>
+                <option value="inscripciones">Inscripciones Generales</option>
+                <option value="asistenciainaugural">Asistencia Inaugural</option>
+                <option value="liderazgo">Liderazgo</option>
+                <option value="hackathon">Hackathon</option>
+              </select>
+            </div>
+
+            {/* Estado de la cámara */}
+            <div className={`camera-status ${isScanning ? 'active' : 'inactive'} ${scanError ? 'error' : ''}`}>
+              <div className="camera-status-indicator">
+                <div className={`status-dot ${isScanning ? 'recording' : ''}`}></div>
+                <span className="status-text">
+                  {scanError ? `Error: ${scanError}` : 
+                   loading ? 'Cargando...' : 
+                   isScanning ? 'Cámara activa - Escaneando' : 'Cámara inactiva'}
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div className={getCameraStatusClass()}>
-            {getCameraStatusText()}
+          {/* Área del scanner */}
+          <div className="scanner-area">
+            <div id="qr-reader" className="qr-reader" />
+            
+            {/* Overlay cuando no está escaneando */}
+            {!isScanning && !loading && (
+              <div className="scanner-placeholder">
+                <CameraOff size={64} className="placeholder-icon" />
+                <h3>Cámara inactiva</h3>
+                <p>Selecciona un evento y presiona "Iniciar Scanner" para comenzar</p>
+              </div>
+            )}
+
+            {/* Overlay de carga */}
+            {loading && (
+              <div className="scanner-loading">
+                <Loader2 size={48} className="loading-spinner-icon" />
+                <p>Iniciando cámara...</p>
+              </div>
+            )}
           </div>
 
-          {/* Contenedor del scanner */}
-          <div id="qr-reader" className="qr-reader" />
-
+          {/* Controles del scanner */}
           <div className="scanner-controls">
             <button
               onClick={handleStartScanner}
-              className="btn btn-primary"
+              className="btn btn-primary btn-scanner-start"
               disabled={isScanning || loading || !selectedEvent}
             >
-              {loading ? '🔄 Iniciando...' :
-                isScanning ? '🎥 Escaneando...' : '🎥 Iniciar Scanner'}
+              {loading ? (
+                <>
+                  <Loader2 size={18} className="loading-spinner-icon" />
+                  Iniciando...
+                </>
+              ) : isScanning ? (
+                <>
+                  <Camera size={18} />
+                  Escaneando...
+                </>
+              ) : (
+                <>
+                  <Play size={18} />
+                  Iniciar Scanner
+                </>
+              )}
             </button>
 
             <button
@@ -343,7 +398,8 @@ const Scanner = ({ onDashboardClick, onLogout }) => {
               className="btn btn-danger"
               disabled={!isScanning || loading}
             >
-              ⏹️ Detener Scanner
+              <Square size={18} />
+              Detener Scanner
             </button>
 
             <button
@@ -351,15 +407,23 @@ const Scanner = ({ onDashboardClick, onLogout }) => {
               className="btn btn-secondary"
               disabled={loading}
             >
-              🔄 Reiniciar
+              <RotateCcw size={18} />
+              Reiniciar
             </button>
           </div>
 
-          <div className={`scan-result ${message.type}`}>
-            {message.text}
+          {/* Mensaje de estado */}
+          <div className={`scan-message ${message.type}`}>
+            <div className="message-icon">
+              {getMessageIcon()}
+            </div>
+            <div className="message-content">
+              <p>{message.text}</p>
+            </div>
           </div>
         </div>
 
+        {/* Tarjeta de información del usuario */}
         {userInfo && (
           <UserInfoCard
             userInfo={userInfo}

@@ -1,0 +1,214 @@
+.notification-container {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 400px;
+    pointer-events: none;
+  }
+  
+  .notification {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    border-left: 4px solid;
+    pointer-events: auto;
+    cursor: pointer;
+    animation: slideInRight 0.3s ease, fadeIn 0.3s ease;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+  
+  .notification:hover {
+    transform: translateX(-5px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+  }
+  
+  @keyframes slideInRight {
+    from {
+      transform: translateX(400px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideOutRight {
+    to {
+      transform: translateX(400px);
+      opacity: 0;
+    }
+  }
+  
+  .notification.removing {
+    animation: slideOutRight 0.3s ease;
+  }
+  
+  .notification-success {
+    border-left-color: #10b981;
+    background: linear-gradient(135deg, #d1fae5 0%, #ffffff 100%);
+  }
+  
+  .notification-success .notification-icon {
+    color: #10b981;
+  }
+  
+  .notification-error {
+    border-left-color: #ef4444;
+    background: linear-gradient(135deg, #fee2e2 0%, #ffffff 100%);
+  }
+  
+  .notification-error .notification-icon {
+    color: #ef4444;
+  }
+  
+  .notification-warning {
+    border-left-color: #f59e0b;
+    background: linear-gradient(135deg, #fef3c7 0%, #ffffff 100%);
+  }
+  
+  .notification-warning .notification-icon {
+    color: #f59e0b;
+  }
+  
+  .notification-info {
+    border-left-color: #3b82f6;
+    background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%);
+  }
+  
+  .notification-info .notification-icon {
+    color: #3b82f6;
+  }
+  
+  .notification-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.8);
+  }
+  
+  .notification-content {
+    flex: 1;
+  }
+  
+  .notification-content p {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: #1f2937;
+    line-height: 1.5;
+  }
+  
+  .notification-close {
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .notification-close:hover {
+    background: rgba(0, 0, 0, 0.1);
+    color: #1f2937;
+  }
+  
+  .notification-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: currentColor;
+    animation: progress linear;
+    opacity: 0.6;
+  }
+  
+  @keyframes progress {
+    from {
+      width: 100%;
+    }
+    to {
+      width: 0%;
+    }
+  }
+  
+  /* Dark theme */
+  [data-theme="dark"] .notification {
+    background: var(--bg-tertiary);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+  
+  [data-theme="dark"] .notification-success {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, var(--bg-tertiary) 100%);
+  }
+  
+  [data-theme="dark"] .notification-error {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, var(--bg-tertiary) 100%);
+  }
+  
+  [data-theme="dark"] .notification-warning {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, var(--bg-tertiary) 100%);
+  }
+  
+  [data-theme="dark"] .notification-info {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, var(--bg-tertiary) 100%);
+  }
+  
+  [data-theme="dark"] .notification-content p {
+    color: var(--text-primary);
+  }
+  
+  [data-theme="dark"] .notification-close {
+    color: var(--text-secondary);
+  }
+  
+  [data-theme="dark"] .notification-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+  }
+  
+  /* Responsive */
+  @media (max-width: 768px) {
+    .notification-container {
+      right: 12px;
+      left: 12px;
+      max-width: none;
+      top: 70px;
+    }
+  
+    .notification {
+      padding: 12px;
+    }
+  
+    .notification-content p {
+      font-size: 13px;
+    }
+  }
