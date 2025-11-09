@@ -1,13 +1,17 @@
-// api.js - VERSIÓN ACTUALIZADA CON PROXY
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? process.env.REACT_APP_API_URL || 'https://unicatolica-xisemanaing-360-backend.vercel.app'
-  : ''; // En desarrollo usa el proxy
+// api.js - VERSIÓN CORREGIDA COMPLETA
+
+// ✅ CORREGIDO: Usar import.meta.env para Vite en lugar de process.env
+const API_BASE_URL = import.meta.env.MODE === 'production'
+  ? import.meta.env.VITE_API_URL || 'https://unicatolica-xisemanaing-360-backend.vercel.app'
+  : import.meta.env.VITE_API_URL || 'https://unicatolica-xisemanaing-360-backend.vercel.app';
+
+console.log('🔧 API Base URL:', API_BASE_URL);
+console.log('🔧 Mode:', import.meta.env.MODE);
 
 class APIClient {
   constructor() {
     this.baseURL = API_BASE_URL;
-    // Log para debug
-    console.log('🔧 API Base URL:', this.baseURL || 'Usando proxy');
+    console.log('🚀 APIClient inicializado con URL:', this.baseURL);
   }
 
   async request(endpoint, options = {}) {
@@ -22,28 +26,74 @@ class APIClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // En desarrollo, usa rutas relativas (proxy)
-    // En producción, usa la URL completa
-    const url = this.baseURL 
-      ? `${this.baseURL}${endpoint}`
-      : endpoint;
+    const url = `${this.baseURL}${endpoint}`;
 
-    console.log('🌐 Making request to:', url);
-    
+    console.log('🌐 Request:', {
+      url,
+      method: options.method || 'GET',
+      hasToken: !!token,
+      body: options.body ? JSON.parse(options.body) : null
+    });
+
     try {
       const response = await fetch(url, {
         ...options,
         headers,
-        body: options.body ? JSON.stringify(options.body) : undefined,
-        credentials: 'include' // Importante para CORS con credenciales
+        body: options.body ? options.body : undefined
       });
 
-      // ... resto del código igual
+      console.log('📡 Response status:', response.status, response.statusText);
+
+      const text = await response.text();
+      let data;
+
+      try {
+        data = text ? JSON.parse(text) : {};
+        console.log('📦 Response data:', data);
+      } catch (parseError) {
+        console.error('❌ Error parseando respuesta:', parseError);
+        // Si no es JSON, verificar si es HTML (error del servidor)
+        if ((text && text.trim().startsWith('<!DOCTYPE')) || (text && text.includes('<html'))) {
+          const errorMatch = text.match(/<pre>(.*?)<\/pre>/i) || text.match(/<title>(.*?)<\/title>/i);
+          const errorText = errorMatch ? errorMatch[1] : 'Error del servidor';
+          data = {
+            success: false,
+            message: response.status === 500
+              ? `Error interno del servidor: ${errorText}`
+              : `Error ${response.status}: ${errorText}`
+          };
+        } else {
+          data = { 
+            success: false, 
+            message: text || `Error ${response.status}: ${response.statusText}` 
+          };
+        }
+      }
+
+      if (!response.ok) {
+        console.error('❌ Request failed:', {
+          status: response.status,
+          data: data
+        });
+        
+        const errorMessage = data.message || data.error || `Error ${response.status}: ${response.statusText}`;
+        const error = new Error(errorMessage);
+        error.status = response.status;
+        error.data = data;
+        throw error;
+      }
+
+      return data;
+
     } catch (error) {
       console.error('❌ API Error:', error);
+      
       if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-        throw new Error('No se pudo conectar con el servidor. Verifica tu conexión o contacta al administrador.');
+        const newError = new Error('No se pudo conectar con el servidor. Verifica tu conexión a internet.');
+        newError.originalError = error;
+        throw newError;
       }
+      
       throw error;
     }
   }
@@ -52,43 +102,76 @@ class APIClient {
 
   /**
    * Paso 1: Login tradicional con usuario y contraseña
-   * @param {Object} credentials - Credenciales de usuario
-   * @param {string} credentials.usuario - Nombre de usuario
-   * @param {string} credentials.password - Contraseña
    */
   async login(credentials) {
-    return this.request('/organizador/login', {
-      method: 'POST',
-      body: JSON.stringify(credentials)
+    console.log('🔐 Login - Enviando credenciales:', { 
+      usuario: credentials.usuario,
+      passwordLength: credentials.password?.length 
     });
+
+    // Validación local antes de enviar
+    if (!credentials.usuario?.trim() || !credentials.password?.trim()) {
+      throw new Error('Usuario y contraseña son requeridos');
+    }
+
+    const cleanCredentials = {
+      usuario: credentials.usuario.trim(),
+      password: credentials.password.trim()
+    };
+
+    const response = await this.request('/organizador/login', {
+      method: 'POST',
+      body: JSON.stringify(cleanCredentials)
+    });
+
+    console.log('✅ Login response:', response);
+    return response;
   }
 
   /**
    * Paso 2: Solicitar código de verificación 2FA por WhatsApp
-   * @param {string} usuarioId - ID del usuario autenticado
    */
   async solicitarCodigo2FA(usuarioId) {
-    return this.request('/organizador/2fa/solicitar', {
+    console.log('📱 Solicitando código 2FA para:', usuarioId);
+
+    if (!usuarioId) {
+      throw new Error('ID de usuario es requerido');
+    }
+
+    const response = await this.request('/organizador/2fa/solicitar', {
       method: 'POST',
       body: JSON.stringify({ usuarioId })
     });
+
+    console.log('✅ Código 2FA solicitado:', response);
+    return response;
   }
 
   /**
    * Paso 3: Verificar código 2FA y obtener token de acceso
-   * @param {string} usuarioId - ID del usuario
-   * @param {string} codigo - Código de 6 dígitos recibido por WhatsApp
    */
   async verificarCodigo2FA(usuarioId, codigo) {
-    return this.request('/organizador/2fa/verificar', {
+    console.log('🔐 Verificando código 2FA:', { usuarioId, codigo });
+
+    if (!usuarioId || !codigo) {
+      throw new Error('ID de usuario y código son requeridos');
+    }
+
+    if (codigo.length !== 6 || !/^\d+$/.test(codigo)) {
+      throw new Error('El código debe ser de 6 dígitos numéricos');
+    }
+
+    const response = await this.request('/organizador/2fa/verificar', {
       method: 'POST',
       body: JSON.stringify({ usuarioId, codigo })
     });
+
+    console.log('✅ Código 2FA verificado:', response);
+    return response;
   }
 
   /**
    * Método para renovar token expirado
-   * @param {string} refreshToken - Token de refresco
    */
   async renovarToken(refreshToken) {
     return this.request('/organizador/refresh-token', {
@@ -99,7 +182,6 @@ class APIClient {
 
   /**
    * Cerrar sesión y revocar tokens
-   * @param {string} usuarioId - ID del usuario
    */
   async logout(usuarioId) {
     return this.request('/organizador/logout', {
@@ -115,19 +197,71 @@ class APIClient {
     return this.request('/organizador/verificar-sesion');
   }
 
-  // ===== MÉTODOS EXISTENTES DEL DASHBOARD =====
+  // ===== MÉTODOS DEL DASHBOARD =====
 
   /**
    * Obtener inscripciones por colección (evento)
-   * @param {string} coleccion - ID de la colección/evento
    */
   async getInscripciones(coleccion) {
-    return this.request(`/organizador/inscripciones?coleccion=${coleccion}`);
+    const data = await this.request(`/organizador/inscripciones?coleccion=${coleccion}`);
+
+    if (data.inscripciones && Array.isArray(data.inscripciones)) {
+      data.inscripciones = data.inscripciones.map(inscripcion => ({
+        ...inscripcion,
+        email: inscripcion.correo,
+        id: inscripcion._id || inscripcion.id,
+        nombre: this.formatNombre(inscripcion.nombre)
+      }));
+    }
+
+    return data;
   }
 
   /**
-   * Obtener estadísticas por colección (evento)
-   * @param {string} coleccion - ID de la colección/evento
+   * Obtener resumen completo de todos los eventos
+   */
+  async getResumenCompletoEventos() {
+    return this.request('/organizador/resumen-completo-eventos');
+  }
+
+  /**
+   * Obtener estadísticas generales
+   */
+  async getEstadisticasGenerales() {
+    return this.request('/organizador/estadisticas-generales');
+  }
+
+  /**
+   * Exportar datos completos
+   */
+  async exportarDatosCompletos(formato = 'json') {
+    return this.request(`/organizador/exportar-datos-completos?formato=${formato}`);
+  }
+
+  /**
+   * Exportar resumen en PDF
+   */
+  async exportarResumenPDF() {
+    return this.request('/organizador/exportar-resumen-pdf');
+  }
+
+  /**
+   * Formatear nombre (capitalizar correctamente)
+   */
+  formatNombre(nombre) {
+    if (!nombre || typeof nombre !== 'string') return '-';
+
+    let formatted = nombre.toLowerCase().trim();
+    formatted = formatted.replace(/\b\w/g, char => char.toUpperCase());
+    formatted = formatted.replace(/\b(Mc|Mac|O'|De La|Del|Los|Las|El|La)\b/gi,
+      match => match.charAt(0).toUpperCase() + match.slice(1).toLowerCase());
+    formatted = formatted.replace(/\s+/g, ' ');
+
+    return formatted;
+  }
+
+  /**
+   * Obtener estadísticas por colección
    */
   async getStats(coleccion) {
     return this.request(`/organizador/stats?coleccion=${coleccion}`);
@@ -141,10 +275,7 @@ class APIClient {
   }
 
   /**
-   * Marcar/desmarcar asistencia de un usuario
-   * @param {string} id - ID de la inscripción
-   * @param {string} coleccion - ID de la colección/evento
-   * @param {boolean} asistencia - Estado de la asistencia
+   * Marcar/desmarcar asistencia
    */
   async marcarAsistencia(id, coleccion, asistencia) {
     return this.request(`/organizador/asistencia/${id}?coleccion=${coleccion}`, {
@@ -155,19 +286,25 @@ class APIClient {
 
   /**
    * Buscar inscripción por ID
-   * @param {string} id - ID de la inscripción
    */
   async buscarInscripcion(id) {
-    return this.request(`/organizador/buscar-inscripcion/${id}`);
+    const data = await this.request(`/organizador/buscar-inscripcion/${id}`);
+
+    if (data.inscripcion) {
+      data.inscripcion = {
+        ...data.inscripcion,
+        email: data.inscripcion.correo,
+        id: data.inscripcion._id || data.inscripcion.id
+      };
+    }
+
+    return data;
   }
 
-  // ===== MÉTODOS ADICIONALES DE SEGURIDAD =====
+  // ===== MÉTODOS DE SEGURIDAD =====
 
   /**
    * Cambiar contraseña del usuario
-   * @param {string} usuarioId - ID del usuario
-   * @param {string} passwordActual - Contraseña actual
-   * @param {string} nuevaPassword - Nueva contraseña
    */
   async cambiarPassword(usuarioId, passwordActual, nuevaPassword) {
     return this.request('/organizador/cambiar-password', {
@@ -178,7 +315,6 @@ class APIClient {
 
   /**
    * Solicitar recuperación de contraseña
-   * @param {string} usuario - Nombre de usuario o email
    */
   async solicitarRecuperacionPassword(usuario) {
     return this.request('/organizador/recuperar-password', {
@@ -189,8 +325,6 @@ class APIClient {
 
   /**
    * Verificar código de recuperación
-   * @param {string} usuario - Nombre de usuario
-   * @param {string} codigoRecuperacion - Código de recuperación
    */
   async verificarCodigoRecuperacion(usuario, codigoRecuperacion) {
     return this.request('/organizador/verificar-codigo-recuperacion', {
@@ -200,10 +334,7 @@ class APIClient {
   }
 
   /**
-   * Restablecer contraseña con código de recuperación
-   * @param {string} usuario - Nombre de usuario
-   * @param {string} codigoRecuperacion - Código de recuperación
-   * @param {string} nuevaPassword - Nueva contraseña
+   * Restablecer contraseña
    */
   async restablecerPassword(usuario, codigoRecuperacion, nuevaPassword) {
     return this.request('/organizador/restablecer-password', {
@@ -215,9 +346,7 @@ class APIClient {
   // ===== MÉTODOS DE AUDITORÍA =====
 
   /**
-   * Obtener logs de acceso del usuario
-   * @param {string} usuarioId - ID del usuario
-   * @param {number} limite - Número máximo de logs a obtener
+   * Obtener logs de acceso
    */
   async obtenerLogsAcceso(usuarioId, limite = 50) {
     return this.request(`/organizador/logs-acceso?usuarioId=${usuarioId}&limite=${limite}`);

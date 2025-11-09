@@ -15,13 +15,15 @@ import TrendChart from './TrendChart';
 import EventManager from './EventManager';
 import PDFExport from './PDFExport';
 import '../styles/Dashboard.css';
-import { Users, TrendingUp, Settings } from 'lucide-react';
+import ResumenCompleto from './ResumenCompleto';
+import { Users, TrendingUp, Settings, BarChart3 } from 'lucide-react';
 
 const Dashboard = ({ onLogout, onScannerClick }) => {
   const [userName, setUserName] = useState('Administrador');
   const [actividades, setActividades] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState('');
   const [inscripciones, setInscripciones] = useState([]);
+  const [showResumenCompleto, setShowResumenCompleto] = useState(false);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState({
     actividades: true,
@@ -29,7 +31,7 @@ const Dashboard = ({ onLogout, onScannerClick }) => {
     stats: false
   });
   const [error, setError] = useState('');
-  
+
   // Estados para búsqueda y filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
@@ -131,7 +133,7 @@ const Dashboard = ({ onLogout, onScannerClick }) => {
     setSearchTerm('');
     setFilters({ asistencia: 'todos' });
     setSelectedIds([]);
-    
+
     if (coleccion) {
       cargarInscripciones(coleccion);
     } else {
@@ -182,10 +184,10 @@ const Dashboard = ({ onLogout, onScannerClick }) => {
   // Acciones masivas
   const handleBulkMarkAttendance = async () => {
     try {
-      const promises = selectedIds.map(id => 
+      const promises = selectedIds.map(id =>
         apiClient.marcarAsistencia(id, selectedEvent, true)
       );
-      
+
       await Promise.all(promises);
       showSuccess(`Asistencia marcada para ${selectedIds.length} personas`);
       setSelectedIds([]);
@@ -197,10 +199,10 @@ const Dashboard = ({ onLogout, onScannerClick }) => {
 
   const handleBulkUnmarkAttendance = async () => {
     try {
-      const promises = selectedIds.map(id => 
+      const promises = selectedIds.map(id =>
         apiClient.marcarAsistencia(id, selectedEvent, false)
       );
-      
+
       await Promise.all(promises);
       showSuccess(`Asistencia desmarcada para ${selectedIds.length} personas`);
       setSelectedIds([]);
@@ -260,10 +262,10 @@ const Dashboard = ({ onLogout, onScannerClick }) => {
         const nombre = (inscripcion.nombre || '').toLowerCase();
         const email = (inscripcion.email || '').toLowerCase();
         const telefono = (inscripcion.telefono || '').toLowerCase();
-        
-        return nombre.includes(termLower) || 
-               email.includes(termLower) || 
-               telefono.includes(termLower);
+
+        return nombre.includes(termLower) ||
+          email.includes(termLower) ||
+          telefono.includes(termLower);
       });
     }
 
@@ -296,7 +298,7 @@ const Dashboard = ({ onLogout, onScannerClick }) => {
   return (
     <div className="dashboard-container">
       <NotificationSystem />
-      
+
       <Header
         userName={userName}
         onScannerClick={onScannerClick}
@@ -310,9 +312,18 @@ const Dashboard = ({ onLogout, onScannerClick }) => {
           onEventChange={handleEventChange}
           loading={loading.actividades}
         />
-        
+
+        <button
+          className="resumen-completo-btn"
+          onClick={() => setShowResumenCompleto(true)}
+          title="Ver resumen completo de todos los eventos"
+        >
+          <BarChart3 size={18} />
+          <span>Resumen Completo</span>
+        </button>
+
         <div className="header-actions">
-          <button 
+          <button
             className="manage-events-btn"
             onClick={() => setShowEventManager(true)}
             title="Gestionar eventos"
@@ -327,7 +338,7 @@ const Dashboard = ({ onLogout, onScannerClick }) => {
             stats={stats}
             disabled={loading.inscripciones || inscripcionesFiltradas.length === 0}
           />
-          <ExportButton 
+          <ExportButton
             inscripciones={inscripcionesFiltradas}
             nombreEvento={nombreEventoSeleccionado}
             disabled={loading.inscripciones || inscripcionesFiltradas.length === 0}
@@ -348,7 +359,7 @@ const Dashboard = ({ onLogout, onScannerClick }) => {
             <Users size={20} />
             Inscripciones
           </h2>
-          
+
           <BulkActions
             selectedCount={selectedIds.length}
             onMarkAttendance={handleBulkMarkAttendance}
@@ -357,13 +368,13 @@ const Dashboard = ({ onLogout, onScannerClick }) => {
             onDelete={handleBulkDelete}
             onClearSelection={handleClearSelection}
           />
-          
+
           <SearchFilter
             onSearchChange={handleSearchChange}
             onFilterChange={handleFilterChange}
             totalResults={inscripcionesFiltradas.length}
           />
-          
+
           <InscripcionesTable
             inscripciones={inscripcionesFiltradas}
             coleccion={selectedEvent}
@@ -380,17 +391,17 @@ const Dashboard = ({ onLogout, onScannerClick }) => {
             <TrendingUp size={20} />
             Estadísticas
           </h2>
-          
+
           <TrendChart
             inscripciones={inscripciones}
             loading={loading.inscripciones}
           />
-          
+
           <AttendanceChart
             stats={stats}
             loading={loading.stats}
           />
-          
+
           <StatsCards
             stats={stats}
             loading={loading.stats}
@@ -412,6 +423,12 @@ const Dashboard = ({ onLogout, onScannerClick }) => {
           actividades={actividades}
           onRefresh={cargarActividades}
           onClose={() => setShowEventManager(false)}
+        />
+      )}
+
+      {showResumenCompleto && (
+        <ResumenCompleto
+          onClose={() => setShowResumenCompleto(false)}
         />
       )}
     </div>

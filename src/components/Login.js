@@ -4,19 +4,17 @@ import '../styles/Login.css';
 import fondoLogin from '../assets/fondologin.png';
 import logoUnicatolica from '../assets/QR-UNICATOLICA1.png';
 
-// Constantes para mejor mantenibilidad
 const LOGIN_STEPS = {
   LOGIN: 'login',
   VERIFY_2FA: 'verificar_2fa'
 };
 
 const TIMEOUTS = {
-  RESEND_CODE: 120, // 2 minutos
-  SESSION_CHECK: 5000 // 5 segundos
+  RESEND_CODE: 120,
+  SESSION_CHECK: 5000
 };
 
 const Login = ({ onLoginSuccess }) => {
-  // Estados
   const [credentials, setCredentials] = useState({ 
     usuario: '', 
     password: '' 
@@ -31,11 +29,9 @@ const Login = ({ onLoginSuccess }) => {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [passwordVisible, setPasswordVisible] = useState(false);
 
-  // Refs
   const passwordRef = useRef(null);
   const twoFARef = useRef(null);
 
-  // Efecto para cargar usuario recordado
   useEffect(() => {
     const savedUser = localStorage.getItem('rememberedUser');
     if (savedUser) {
@@ -44,7 +40,6 @@ const Login = ({ onLoginSuccess }) => {
     }
   }, []);
 
-  // Efecto para verificar autenticación existente
   const checkExistingAuth = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -53,7 +48,7 @@ const Login = ({ onLoginSuccess }) => {
       await apiClient.getActividades();
       onLoginSuccess();
     } catch (error) {
-      console.warn('Sesión inválida:', error);
+      console.warn('⚠️ Sesión inválida:', error);
       localStorage.removeItem('token');
       localStorage.removeItem('userData');
     }
@@ -63,7 +58,6 @@ const Login = ({ onLoginSuccess }) => {
     checkExistingAuth();
   }, [checkExistingAuth]);
 
-  // Efecto para el contador de tiempo
   useEffect(() => {
     if (timeRemaining <= 0) return;
 
@@ -74,7 +68,6 @@ const Login = ({ onLoginSuccess }) => {
     return () => clearInterval(interval);
   }, [timeRemaining]);
 
-  // Manejo de cambios en los inputs
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setCredentials(prev => ({ ...prev, [name]: value }));
@@ -86,7 +79,6 @@ const Login = ({ onLoginSuccess }) => {
     setTwoFACode(value);
     clearError();
 
-    // Auto-submit cuando se completa el código
     if (value.length === 6) {
       setTimeout(() => handleVerify2FA(), 100);
     }
@@ -103,7 +95,6 @@ const Login = ({ onLoginSuccess }) => {
     setPasswordVisible(!passwordVisible);
   };
 
-  // Utilidades
   const clearError = () => {
     if (error) setError('');
   };
@@ -111,14 +102,20 @@ const Login = ({ onLoginSuccess }) => {
   const handleError = (error) => {
     let message = 'Error de conexión. Intenta nuevamente.';
     
-    if (error.message?.includes('Failed to fetch')) {
-      message = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+    console.error('🔴 Error capturado:', error);
+
+    if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+      message = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
     } else if (error.message?.includes('CORS')) {
       message = 'Error de configuración del servidor. Contacta al administrador.';
+    } else if (error.status === 400) {
+      message = error.message || 'Datos inválidos. Verifica la información ingresada.';
     } else if (error.status === 401) {
       message = 'Credenciales inválidas. Verifica tu usuario y contraseña.';
     } else if (error.status === 429) {
-      message = 'Demasiados intentos. Espera unos minutos.';
+      message = 'Demasiados intentos. Espera unos minutos antes de reintentar.';
+    } else if (error.status === 500) {
+      message = 'Error del servidor. Intenta más tarde o contacta soporte.';
     } else if (error.message) {
       message = error.message;
     }
@@ -126,17 +123,24 @@ const Login = ({ onLoginSuccess }) => {
     setError(message);
   };
 
-  // Manejo del login
   const handleLogin = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     
-    if (!credentials.usuario?.trim() || !credentials.password) {
-      setError('Por favor completa todos los campos');
+    console.log('🔐 Iniciando proceso de login...');
+
+    // Validación de campos vacíos
+    if (!credentials.usuario?.trim()) {
+      setError('Por favor ingresa tu usuario');
       return;
     }
 
-    if (credentials.password.length < 4) {
-      setError('La contraseña debe tener al menos 4 caracteres');
+    if (!credentials.password?.trim()) {
+      setError('Por favor ingresa tu contraseña');
+      return;
+    }
+
+    if (credentials.password.length < 3) {
+      setError('La contraseña debe tener al menos 3 caracteres');
       return;
     }
 
@@ -144,48 +148,78 @@ const Login = ({ onLoginSuccess }) => {
     clearError();
 
     try {
+      console.log('📤 Enviando credenciales al servidor...');
+      
       const data = await apiClient.login(credentials);
       
-      if (!data.success) {
+      console.log('📥 Respuesta recibida:', data);
+
+      // ✅ VALIDACIÓN MEJORADA DE LA RESPUESTA
+      if (!data) {
+        throw new Error('No se recibió respuesta del servidor');
+      }
+
+      if (data.success === false) {
         throw new Error(data.message || 'Error en el inicio de sesión');
       }
 
-      const userId = data.user?.id || data.user?._id || data.usuario?.id || data.usuario?._id;
+      // Verificar que exista información del usuario
+      const user = data.user || data.usuario;
+      
+      if (!user) {
+        console.error('❌ Respuesta sin datos de usuario:', data);
+        throw new Error('Respuesta del servidor no contiene información del usuario');
+      }
+
+      // Obtener el ID del usuario de diferentes posibles ubicaciones
+      const userId = user.id || user._id;
       
       if (!userId) {
-        throw new Error('Datos de usuario no válidos');
+        console.error('❌ Usuario sin ID:', user);
+        throw new Error('No se pudo obtener el ID del usuario');
       }
+
+      console.log('✅ Login exitoso. Usuario ID:', userId);
 
       // Guardar usuario si "Recordar" está activado
       if (rememberMe) {
-        localStorage.setItem('rememberedUser', credentials.usuario);
+        localStorage.setItem('rememberedUser', credentials.usuario.trim());
       }
 
-      setUserData(data.user || data.usuario);
+      setUserData(user);
+      
+      // Solicitar código 2FA
       await request2FACode(userId);
 
     } catch (error) {
+      console.error('❌ Error en handleLogin:', error);
       handleError(error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Solicitar código 2FA
   const request2FACode = async (userId) => {
     try {
       setLoading(true);
+      clearError();
+      
+      console.log('📱 Solicitando código 2FA para usuario:', userId);
+      
       const data = await apiClient.solicitarCodigo2FA(userId);
       
-      if (!data.success) {
-        throw new Error(data.message || 'Error al enviar el código');
+      console.log('📥 Respuesta solicitud 2FA:', data);
+
+      if (!data || data.success === false) {
+        throw new Error(data?.message || 'Error al solicitar el código de verificación');
       }
+
+      console.log('✅ Código 2FA enviado exitosamente');
 
       setCurrentStep(LOGIN_STEPS.VERIFY_2FA);
       setTimeRemaining(TIMEOUTS.RESEND_CODE);
       setResendCount(prev => prev + 1);
       
-      // Focus en el input del código
       setTimeout(() => {
         if (twoFARef.current) {
           twoFARef.current.focus();
@@ -193,18 +227,22 @@ const Login = ({ onLoginSuccess }) => {
       }, 100);
 
     } catch (error) {
+      console.error('❌ Error solicitando código 2FA:', error);
       handleError(error);
+      // Volver al login si falla el envío del código
+      setCurrentStep(LOGIN_STEPS.LOGIN);
     } finally {
       setLoading(false);
     }
   };
 
-  // Verificar código 2FA
   const handleVerify2FA = async (e) => {
     e?.preventDefault();
     
-    if (twoFACode.length !== 6) {
-      setError('Por favor ingresa el código de 6 dígitos');
+    console.log('🔐 Verificando código 2FA:', twoFACode);
+
+    if (!twoFACode || twoFACode.length !== 6) {
+      setError('Por favor ingresa el código completo de 6 dígitos');
       return;
     }
 
@@ -213,53 +251,88 @@ const Login = ({ onLoginSuccess }) => {
 
     try {
       const userId = userData?.id || userData?._id;
+      
+      if (!userId) {
+        throw new Error('No se encontró el ID del usuario. Intenta iniciar sesión nuevamente.');
+      }
+
+      console.log('📤 Enviando código para verificación...');
+      
       const data = await apiClient.verificarCodigo2FA(userId, twoFACode);
       
-      if (!data.success) {
-        throw new Error(data.message || 'Código inválido');
+      console.log('📥 Respuesta verificación 2FA:', data);
+
+      if (!data || data.success === false) {
+        throw new Error(data?.message || 'Código de verificación inválido');
       }
+
+      if (!data.token) {
+        throw new Error('No se recibió el token de autenticación');
+      }
+
+      console.log('✅ Código verificado. Token recibido.');
 
       // Guardar datos de sesión
       localStorage.setItem('token', data.token);
-      localStorage.setItem('userData', JSON.stringify(data.user || data.usuario || userData));
       
-      onLoginSuccess();
+      const userToSave = data.user || data.usuario || userData;
+      localStorage.setItem('userData', JSON.stringify(userToSave));
+      
+      console.log('✅ Sesión guardada. Redirigiendo...');
+      
+      // Pequeño delay para que el usuario vea el cambio
+      setTimeout(() => {
+        onLoginSuccess();
+      }, 300);
 
     } catch (error) {
+      console.error('❌ Error verificando código 2FA:', error);
       handleError(error);
-      // Limpiar código en caso de error
       setTwoFACode('');
+      
+      // Focus de vuelta en el input
+      setTimeout(() => {
+        if (twoFARef.current) {
+          twoFARef.current.focus();
+        }
+      }, 100);
     } finally {
       setLoading(false);
     }
   };
 
-  // Reenviar código
   const handleResendCode = async () => {
     if (resendCount >= 3) {
-      setError('Has excedido el número máximo de reenvíos.');
+      setError('Has excedido el número máximo de reenvíos. Inicia sesión nuevamente.');
+      setTimeout(() => backToLogin(), 3000);
       return;
     }
 
     if (timeRemaining > 0) {
-      setError(`Espera ${timeRemaining} segundos antes de reenviar.`);
+      setError(`Espera ${timeRemaining} segundos antes de reenviar el código.`);
       return;
     }
 
     const userId = userData?.id || userData?._id;
-    if (userId) {
-      await request2FACode(userId);
+    if (!userId) {
+      setError('Error obteniendo datos de usuario. Inicia sesión nuevamente.');
+      setTimeout(() => backToLogin(), 2000);
+      return;
     }
+
+    await request2FACode(userId);
   };
 
-  // Volver al login
   const backToLogin = () => {
+    console.log('⬅️ Volviendo al login...');
     setCurrentStep(LOGIN_STEPS.LOGIN);
     setTwoFACode('');
+    setUserData(null);
+    setResendCount(0);
+    setTimeRemaining(0);
     clearError();
   };
 
-  // Renderizado condicional
   const renderLoginForm = () => (
     <form className="login-form" onSubmit={handleLogin} noValidate>
       <div className="form-group">
@@ -302,6 +375,7 @@ const Login = ({ onLoginSuccess }) => {
             className="password-toggle"
             onClick={togglePasswordVisibility}
             tabIndex="-1"
+            aria-label={passwordVisible ? "Ocultar contraseña" : "Mostrar contraseña"}
           >
             {passwordVisible ? '🙈' : '👁️'}
           </button>
@@ -344,7 +418,11 @@ const Login = ({ onLoginSuccess }) => {
         <div className="security-icon">🔒</div>
         <h3>Verificación de Seguridad</h3>
         <p>Hemos enviado un código de 6 dígitos a tu WhatsApp</p>
-        <p className="user-email">{userData?.email || userData?.correo || ''}</p>
+        {userData?.telefono && (
+          <p className="user-phone">
+            ••••••{userData.telefono.slice(-4)}
+          </p>
+        )}
       </div>
 
       <div className="form-group">
@@ -364,6 +442,7 @@ const Login = ({ onLoginSuccess }) => {
           inputMode="numeric"
           pattern="[0-9]*"
           autoComplete="one-time-code"
+          maxLength="6"
         />
         <div className="code-hint">Ingresa el código de 6 dígitos</div>
       </div>
@@ -378,9 +457,12 @@ const Login = ({ onLoginSuccess }) => {
             type="button"
             className="resend-button"
             onClick={handleResendCode}
-            disabled={resendCount >= 3}
+            disabled={loading || resendCount >= 3}
           >
-            Reenviar código ({3 - resendCount} intentos restantes)
+            {resendCount >= 3 
+              ? 'Límite de reenvíos alcanzado'
+              : `Reenviar código (${3 - resendCount} ${3 - resendCount === 1 ? 'intento' : 'intentos'} restantes)`
+            }
           </button>
         )}
       </div>
@@ -442,7 +524,7 @@ const Login = ({ onLoginSuccess }) => {
         }
 
         {error && (
-          <div className="error-message">
+          <div className="error-message" role="alert">
             <span className="error-icon">⚠️</span>
             {error}
           </div>
