@@ -1,12 +1,46 @@
 // api.js - VERSIÓN CORREGIDA COMPLETA
 
-// ✅ CORREGIDO: Usar import.meta.env para Vite en lugar de process.env
-const API_BASE_URL = import.meta.env.MODE === 'production'
-  ? import.meta.env.VITE_API_URL || 'https://unicatolica-xisemanaing-360-backend.vercel.app'
-  : import.meta.env.VITE_API_URL || 'https://unicatolica-xisemanaing-360-backend.vercel.app';
+// ✅ SOLUCIÓN: Manejo robusto de variables de entorno
+const getApiBaseUrl = () => {
+  try {
+    // Verificar si estamos en un entorno con import.meta.env (Vite)
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      console.log('🔧 Entorno Vite detectado');
+      const mode = import.meta.env.MODE;
+      const apiUrl = import.meta.env.VITE_API_URL;
+      
+      console.log('🔧 Mode:', mode);
+      console.log('🔧 VITE_API_URL:', apiUrl);
+      
+      return apiUrl || 'https://unicatolica-xisemanaing-360-backend.vercel.app';
+    }
+    
+    // Verificar si estamos en un entorno con process.env (Node.js)
+    if (typeof process !== 'undefined' && process.env) {
+      console.log('🔧 Entorno Node.js detectado');
+      const mode = process.env.NODE_ENV;
+      const apiUrl = process.env.VITE_API_URL;
+      
+      console.log('🔧 NODE_ENV:', mode);
+      console.log('🔧 VITE_API_URL:', apiUrl);
+      
+      return apiUrl || 'https://unicatolica-xisemanaing-360-backend.vercel.app';
+    }
+    
+    // Fallback para entornos desconocidos
+    console.log('🔧 Entorno desconocido, usando URL por defecto');
+    return 'https://unicatolica-xisemanaing-360-backend.vercel.app';
+    
+  } catch (error) {
+    console.error('❌ Error obteniendo variables de entorno:', error);
+    // Fallback seguro
+    return 'https://unicatolica-xisemanaing-360-backend.vercel.app';
+  }
+};
 
-console.log('🔧 API Base URL:', API_BASE_URL);
-console.log('🔧 Mode:', import.meta.env.MODE);
+const API_BASE_URL = getApiBaseUrl();
+
+console.log('🚀 API Base URL final:', API_BASE_URL);
 
 class APIClient {
   constructor() {
