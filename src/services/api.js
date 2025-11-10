@@ -1,4 +1,4 @@
-// api.js - VERSIÓN CORREGIDA COMPLETA
+// api.js - VERSIÓN ACTUALIZADA CON TWILIO WEBHOOKS
 
 // ✅ SOLUCIÓN: Manejo robusto de variables de entorno
 const getApiBaseUrl = () => {
@@ -231,6 +231,111 @@ class APIClient {
     return this.request('/organizador/verificar-sesion');
   }
 
+  // ===== MÉTODOS PARA TWILIO WEBHOOKS =====
+
+  /**
+   * Verificar configuración de webhooks de Twilio
+   */
+  async verificarWebhooks() {
+    console.log('🔧 Verificando configuración de webhooks...');
+    
+    const response = await this.request('/organizador/verificar-webhooks');
+    
+    console.log('✅ Estado de webhooks:', response);
+    return response;
+  }
+
+  /**
+   * Obtener diagnóstico completo de webhooks
+   */
+  async getWebhookDiagnostic() {
+    console.log('🔧 Obteniendo diagnóstico de webhooks...');
+    
+    const response = await this.request('/webhooks/twilio/diagnostic');
+    
+    console.log('✅ Diagnóstico de webhooks:', response);
+    return response;
+  }
+
+  /**
+   * Obtener logs de mensajes Twilio
+   */
+  async getTwilioLogs(limit = 50) {
+    console.log('📋 Obteniendo logs de Twilio...');
+    
+    const response = await this.request(`/organizador/twilio-logs?limit=${limit}`);
+    
+    console.log('✅ Logs de Twilio obtenidos:', response.logs?.status?.length || 0, 'registros');
+    return response;
+  }
+
+  /**
+   * Diagnóstico completo de Twilio
+   */
+  async diagnosticoCompletoTwilio() {
+    try {
+      console.group('🔧 INICIANDO DIAGNÓSTICO COMPLETO TWILIO');
+      
+      // 1. Verificar webhooks
+      console.log('1. Verificando configuración de webhooks...');
+      const webhookInfo = await this.verificarWebhooks();
+      
+      // 2. Verificar logs recientes
+      console.log('2. Obteniendo logs recientes...');
+      const logs = await this.getTwilioLogs(5);
+      
+      // 3. Verificar diagnóstico técnico
+      console.log('3. Obteniendo diagnóstico técnico...');
+      const diagnostic = await this.getWebhookDiagnostic();
+      
+      console.groupEnd();
+      
+      const resultado = {
+        success: true,
+        webhookInfo,
+        logs,
+        diagnostic,
+        summary: {
+          webhooksConfigurados: webhookInfo.success,
+          totalLogs: (logs.logs?.status?.length || 0) + (logs.logs?.incoming?.length || 0),
+          estadoGeneral: webhookInfo.success ? '✅ CONFIGURADO' : '❌ PENDIENTE'
+        }
+      };
+      
+      console.log('📊 Resumen del diagnóstico:', resultado.summary);
+      return resultado;
+      
+    } catch (error) {
+      console.error('❌ Error en diagnóstico completo de Twilio:', error);
+      
+      const resultadoError = {
+        success: false,
+        error: error.message,
+        summary: {
+          estadoGeneral: '❌ ERROR',
+          mensaje: 'No se pudo completar el diagnóstico'
+        }
+      };
+      
+      return resultadoError;
+    }
+  }
+
+  /**
+   * Probar envío de mensaje de prueba
+   */
+  async probarEnvioMensaje(telefono, mensaje = "🔧 Mensaje de prueba de Twilio") {
+    console.log('🧪 Probando envío de mensaje a:', telefono);
+    
+    const response = await this.request('/organizador/probar-mensaje', {
+      method: 'POST',
+      body: JSON.stringify({ telefono, mensaje })
+    });
+    
+    console.log('✅ Resultado prueba mensaje:', response);
+    return response;
+  }
+
   // ===== MÉTODOS DEL DASHBOARD =====
 
   /**
@@ -392,6 +497,126 @@ class APIClient {
   async obtenerEstadisticasSeguridad() {
     return this.request('/organizador/estadisticas-seguridad');
   }
+
+  // ===== MÉTODOS DE UTILIDAD =====
+
+  /**
+   * Obtener información del sistema
+   */
+  async getSystemInfo() {
+    return this.request('/organizador/system-info');
+  }
+
+  /**
+   * Limpiar caché del cliente
+   */
+  clearCache() {
+    console.log('🧹 Limpiando caché del cliente API');
+    // Puedes agregar aquí lógica para limpiar caché si es necesario
+  }
+
+  /**
+   * Verificar salud del servidor
+   */
+  async healthCheck() {
+    try {
+      const response = await this.request('/health');
+      return {
+        success: true,
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        details: response
+      };
+    } catch (error) {
+      return {
+        success: false,
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        error: error.message
+      };
+    }
+  }
 }
 
+// Instancia global del cliente API
 export const apiClient = new APIClient();
+
+// Utilidades adicionales para Twilio
+export const TwilioUtils = {
+  /**
+   * Formatear número de teléfono para Twilio
+   */
+  formatPhoneNumber(phone) {
+    if (!phone) return null;
+    
+    let formatted = phone.trim().replace(/\D/g, '');
+    
+    if (formatted.startsWith('0')) {
+      formatted = '+57' + formatted.substring(1);
+    } else if (formatted.startsWith('57') && formatted.length === 12) {
+      formatted = '+' + formatted;
+    } else if (formatted.length === 10) {
+      formatted = '+57' + formatted;
+    } else if (!formatted.startsWith('+')) {
+      formatted = '+' + formatted;
+    }
+    
+    return 'whatsapp:' + formatted;
+  },
+
+  /**
+   * Ocultar número para mostrar en UI
+   */
+  maskPhoneNumber(phone) {
+    if (!phone) return '••••••••••';
+    
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length <= 4) return '••••••••••';
+    
+    return `••••••${digits.slice(-4)}`;
+  },
+
+  /**
+   * Validar formato de número
+   */
+  isValidPhoneNumber(phone) {
+    if (!phone) return false;
+    
+    const clean = phone.replace(/\D/g, '');
+    return clean.length >= 10 && clean.length <= 12;
+  },
+
+  /**
+   * Generar instrucciones de configuración
+   */
+  generateConfigInstructions(webhookUrls) {
+    if (!webhookUrls) return '';
+
+    return `
+CONFIGURACIÓN TWILIO REQUERIDA:
+
+📋 PASOS A SEGUIR:
+
+1. 🔐 Ve a Twilio Console → WhatsApp → Sandbox
+2. ⚙️ En "Sandbox Configuration", configura:
+   
+   STATUS CALLBACK URL (GET):
+   ${webhookUrls.statusCallback}
+
+   WHEN A MESSAGE COMES IN (POST):
+   ${webhookUrls.incomingMessage}
+
+3. 💾 Guarda los cambios
+4. ✅ Verifica que tu número esté suscrito al sandbox
+5. 🔄 Recarga esta página para verificar
+
+⚠️ IMPORTANTE:
+• Las URLs deben ser públicas
+• Twilio debe poder acceder a tu servidor
+• El número debe enviar "join [código]" al sandbox primero
+    `;
+  }
+};
+
+// Exportar utilidades globalmente
+export default apiClient;

@@ -6,7 +6,8 @@ import logoUnicatolica from '../assets/QR-UNICATOLICA1.png';
 
 const LOGIN_STEPS = {
   LOGIN: 'login',
-  VERIFY_2FA: 'verificar_2fa'
+  VERIFY_2FA: 'verificar_2fa',
+  WEBHOOK_CONFIG: 'webhook_config'
 };
 
 const TIMEOUTS = {
@@ -28,6 +29,8 @@ const Login = ({ onLoginSuccess }) => {
   const [resendCount, setResendCount] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [webhookInfo, setWebhookInfo] = useState(null);
+  const [configStep, setConfigStep] = useState('checking');
 
   const passwordRef = useRef(null);
   const twoFARef = useRef(null);
@@ -67,6 +70,37 @@ const Login = ({ onLoginSuccess }) => {
 
     return () => clearInterval(interval);
   }, [timeRemaining]);
+
+  // Verificar configuración de webhooks al cargar
+  useEffect(() => {
+    const checkWebhooks = async () => {
+      try {
+        setConfigStep('checking');
+        const result = await apiClient.verificarWebhooks();
+        setWebhookInfo(result);
+        
+        // Verificar si las colecciones necesarias existen
+        const allCollectionsExist = result.collectionsStatus && 
+          result.collectionsStatus.twilioMessageLogs && 
+          result.collectionsStatus.incomingWhatsAppMessages && 
+          result.collectionsStatus.sentMessages;
+        
+        if (!allCollectionsExist) {
+          setConfigStep('needs_setup');
+          console.warn('⚠️ Configuración de webhooks incompleta');
+        } else {
+          setConfigStep('ready');
+          console.log('✅ Webhooks configurados correctamente');
+        }
+      } catch (error) {
+        console.error('❌ Error verificando webhooks:', error);
+        setConfigStep('error');
+        setError('Error verificando configuración de Twilio');
+      }
+    };
+
+    checkWebhooks();
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -116,6 +150,15 @@ const Login = ({ onLoginSuccess }) => {
       message = 'Demasiados intentos. Espera unos minutos antes de reintentar.';
     } else if (error.status === 500) {
       message = 'Error del servidor. Intenta más tarde o contacta soporte.';
+    } else if (error.message?.includes('Twilio') || error.message?.includes('WhatsApp')) {
+      // Errores específicos de Twilio
+      if (error.message.includes('sandbox')) {
+        message = 'Error de Twilio: Verifica que tu número esté suscrito al sandbox de WhatsApp';
+      } else if (error.message.includes('número')) {
+        message = error.message;
+      } else {
+        message = `Error de WhatsApp: ${error.message}`;
+      }
     } else if (error.message) {
       message = error.message;
     }
@@ -228,9 +271,17 @@ const Login = ({ onLoginSuccess }) => {
 
     } catch (error) {
       console.error('❌ Error solicitando código 2FA:', error);
-      handleError(error);
-      // Volver al login si falla el envío del código
-      setCurrentStep(LOGIN_STEPS.LOGIN);
+      
+      // Manejar errores específicos de Twilio
+      if (error.message?.includes('Twilio') || error.message?.includes('WhatsApp') || error.message?.includes('sandbox')) {
+        handleError(error);
+        // Mostrar ayuda específica para configuración de Twilio
+        setCurrentStep(LOGIN_STEPS.WEBHOOK_CONFIG);
+      } else {
+        handleError(error);
+        // Volver al login si falla el envío del código
+        setCurrentStep(LOGIN_STEPS.LOGIN);
+      }
     } finally {
       setLoading(false);
     }
@@ -333,6 +384,133 @@ const Login = ({ onLoginSuccess }) => {
     clearError();
   };
 
+  const handleRetryWebhookCheck = async () => {
+    try {
+      setConfigStep('checking');
+      const result = await apiClient.verificarWebhooks();
+      setWebhookInfo(result);
+      
+      const allCollectionsExist = result.collectionsStatus && 
+        result.collectionsStatus.twilioMessageLogs && 
+        result.collectionsStatus.incomingWhatsAppMessages && 
+        result.collectionsStatus.sentMessages;
+      
+      if (allCollectionsExist) {
+        setConfigStep('ready');
+        setCurrentStep(LOGIN_STEPS.LOGIN);
+      } else {
+        setConfigStep('needs_setup');
+      }
+    } catch (error) {
+      setConfigStep('error');
+      setError('Error verificando configuración: ' + error.message);
+    }
+  };
+
+  const handleConfigureWebhooks = () => {
+    if (webhookInfo?.webhookUrls) {
+      const { statusCallback, incomingMessage } = webhookInfo.webhookUrls;
+      
+      // Crear mensaje para el usuario con las URLs
+      const configMessage = `
+CONFIGURACIÓN TWILIO REQUERIDA:
+
+1. Ve a Twilio Sandbox → Settings
+
+2. Configura estas URLs:
+
+STATUS CALLBACK (GET):
+${statusCallback}
+
+WHEN A MESSAGE COMES IN (POST):
+${incomingMessage}
+
+3. Guarda los cambios
+
+4. Asegúrate de que tu número esté suscrito al sandbox
+      `;
+      
+      // Mostrar en alerta y también en consola
+      alert(configMessage);
+      console.log('🔧 URLs para configurar en Twilio:', configMessage);
+    }
+  };
+
+  const renderWebhookConfig = () => (
+    <div className="webhook-config">
+      <div className="config-header">
+        <div className="config-icon">⚙️</div>
+        <h3>Configuración Requerida</h3>
+        <p>Se necesita configurar los webhooks de Twilio para el envío de códigos por WhatsApp</p>
+      </div>
+
+      <div className="config-status">
+        <div className={`status-item ${configStep === 'ready' ? 'ready' : 'pending'}`}>
+          <span className="status-dot"></span>
+          Estado: {configStep === 'ready' ? '✅ Configurado' : '❌ Pendiente'}
+        </div>
+        
+        {webhookInfo?.collectionsStatus && (
+          <div className="collections-status">
+            <h4>Colecciones en Base de Datos:</h4>
+            <div className="collection-list">
+              <div className={`collection-item ${webhookInfo.collectionsStatus.twilioMessageLogs ? 'ready' : 'missing'}`}>
+                twilioMessageLogs: {webhookInfo.collectionsStatus.twilioMessageLogs ? '✅' : '❌'}
+              </div>
+              <div className={`collection-item ${webhookInfo.collectionsStatus.incomingWhatsAppMessages ? 'ready' : 'missing'}`}>
+                incomingWhatsAppMessages: {webhookInfo.collectionsStatus.incomingWhatsAppMessages ? '✅' : '❌'}
+              </div>
+              <div className={`collection-item ${webhookInfo.collectionsStatus.sentMessages ? 'ready' : 'missing'}`}>
+                sentMessages: {webhookInfo.collectionsStatus.sentMessages ? '✅' : '❌'}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="config-actions">
+        <button
+          type="button"
+          className="config-button primary"
+          onClick={handleConfigureWebhooks}
+          disabled={loading}
+        >
+          📋 Mostrar URLs para Configurar
+        </button>
+        
+        <button
+          type="button"
+          className="config-button secondary"
+          onClick={handleRetryWebhookCheck}
+          disabled={loading}
+        >
+          🔄 Verificar Nuevamente
+        </button>
+
+        <button
+          type="button"
+          className="config-button"
+          onClick={backToLogin}
+          disabled={loading}
+        >
+          ← Volver al Login
+        </button>
+      </div>
+
+      <div className="config-help">
+        <h4>📖 Instrucciones:</h4>
+        <ol>
+          <li>Accede a tu consola de Twilio</li>
+          <li>Ve a "Sandbox" → "WhatsApp Sandbox"</li>
+          <li>En "Sandbox Configuration", pega las URLs mostradas</li>
+          <li>Guarda los cambios</li>
+          <li>Verifica que tu número esté suscrito al sandbox</li>
+          <li>Haz clic en "Verificar Nuevamente"</li>
+        </ol>
+      </div>
+    </div>
+  );
+
   const renderLoginForm = () => (
     <form className="login-form" onSubmit={handleLogin} noValidate>
       <div className="form-group">
@@ -409,6 +587,19 @@ const Login = ({ onLoginSuccess }) => {
           'Ingresar'
         )}
       </button>
+
+      {configStep !== 'ready' && (
+        <div className="config-warning">
+          <p>⚠️ La configuración de Twilio no está completa. El envío de códigos podría fallar.</p>
+          <button 
+            type="button" 
+            className="warning-button"
+            onClick={() => setCurrentStep(LOGIN_STEPS.WEBHOOK_CONFIG)}
+          >
+            Ver Configuración
+          </button>
+        </div>
+      )}
     </form>
   );
 
@@ -423,6 +614,9 @@ const Login = ({ onLoginSuccess }) => {
             ••••••{userData.telefono.slice(-4)}
           </p>
         )}
+        <div className="whatsapp-note">
+          💡 <strong>Nota:</strong> Asegúrate de que tu número esté suscrito al sandbox de Twilio WhatsApp
+        </div>
       </div>
 
       <div className="form-group">
@@ -490,6 +684,16 @@ const Login = ({ onLoginSuccess }) => {
       >
         ← Volver al login
       </button>
+
+      <div className="troubleshoot-section">
+        <button 
+          type="button" 
+          className="troubleshoot-button"
+          onClick={() => setCurrentStep(LOGIN_STEPS.WEBHOOK_CONFIG)}
+        >
+          🔧 ¿Problemas con WhatsApp?
+        </button>
+      </div>
     </form>
   );
 
@@ -513,15 +717,16 @@ const Login = ({ onLoginSuccess }) => {
           <p className="login-subtitle">
             {currentStep === LOGIN_STEPS.LOGIN 
               ? 'Accede a tu cuenta' 
-              : 'Verifica tu identidad'
+              : currentStep === LOGIN_STEPS.VERIFY_2FA
+              ? 'Verifica tu identidad'
+              : 'Configuración de Twilio'
             }
           </p>
         </div>
 
-        {currentStep === LOGIN_STEPS.LOGIN 
-          ? renderLoginForm() 
-          : render2FAVerification()
-        }
+        {currentStep === LOGIN_STEPS.LOGIN && renderLoginForm()}
+        {currentStep === LOGIN_STEPS.VERIFY_2FA && render2FAVerification()}
+        {currentStep === LOGIN_STEPS.WEBHOOK_CONFIG && renderWebhookConfig()}
 
         {error && (
           <div className="error-message" role="alert">

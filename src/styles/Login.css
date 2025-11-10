@@ -478,3 +478,214 @@
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
+
+/* Estilos para configuración de webhooks */
+.webhook-config {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 24px;
+  margin: 20px 0;
+  border: 2px solid #e3f2fd;
+}
+
+.config-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.config-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.config-header h3 {
+  color: #1976d2;
+  margin-bottom: 8px;
+}
+
+.config-status {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.status-item.ready .status-dot {
+  background: #4caf50;
+}
+
+.status-item.pending .status-dot {
+  background: #ff9800;
+}
+
+.collections-status {
+  margin-top: 16px;
+}
+
+.collections-status h4 {
+  margin-bottom: 12px;
+  color: #555;
+}
+
+.collection-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.collection-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.collection-item.ready {
+  background: #e8f5e8;
+  color: #2e7d32;
+}
+
+.collection-item.missing {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.config-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.config-button {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.config-button.primary {
+  background: #1976d2;
+  color: white;
+}
+
+.config-button.primary:hover:not(:disabled) {
+  background: #1565c0;
+}
+
+.config-button.secondary {
+  background: #ff9800;
+  color: white;
+}
+
+.config-button.secondary:hover:not(:disabled) {
+  background: #f57c00;
+}
+
+.config-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.config-help {
+  background: #e3f2fd;
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 0.9rem;
+}
+
+.config-help h4 {
+  margin-bottom: 12px;
+  color: #1976d2;
+}
+
+.config-help ol {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.config-help li {
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+/* Estilos para advertencias */
+.config-warning {
+  background: #fff3e0;
+  border: 1px solid #ff9800;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 16px;
+  text-align: center;
+}
+
+.config-warning p {
+  margin: 0 0 12px 0;
+  color: #e65100;
+  font-size: 0.9rem;
+}
+
+.warning-button {
+  background: transparent;
+  border: 1px solid #ff9800;
+  color: #e65100;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.warning-button:hover {
+  background: #ff9800;
+  color: white;
+}
+
+/* Estilos para solución de problemas */
+.troubleshoot-section {
+  text-align: center;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+}
+
+.troubleshoot-button {
+  background: transparent;
+  border: 1px solid #666;
+  color: #666;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.troubleshoot-button:hover {
+  background: #666;
+  color: white;
+}
+
+.whatsapp-note {
+  background: #e8f5e8;
+  border: 1px solid #4caf50;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: #2e7d32;
+}
